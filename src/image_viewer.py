@@ -271,8 +271,18 @@ class ImageViewer:
         self._cleanup()
     
     def _minimize(self) -> None:
-        """Minimize the window."""
-        self.root.iconify()
+        """Minimize the window (withdraw with overrideredirect)."""
+        try:
+            # Try iconify first (works if overrideredirect is False)
+            self.root.iconify()
+        except tk.TclError:
+            # Fallback: use withdraw which hides the window
+            # Note: With overrideredirect, there's no taskbar icon to restore from
+            # So this effectively hides the window - user must close it
+            # A better solution would be a system tray icon, but that's complex
+            self.root.withdraw()
+            # Auto-restore after 2 seconds as a workaround
+            self.root.after(2000, self.root.deiconify)
     
     def _toggle_maximize(self) -> None:
         """Toggle maximize/restore window."""

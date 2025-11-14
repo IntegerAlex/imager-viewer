@@ -8,9 +8,9 @@ version = "0.1.0"
 authors = [
   { name="Akshat Kotpalliwar", email="akshatkot@gmail.com" }
 ]
-description = "Add your description here"
+description = "A simple, memory-efficient image viewer with cursor-focused zoom"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.8"
 dependencies = [
     "pillow>=12.0.0",
     "psutil>=7.1.3",
@@ -20,7 +20,25 @@ license = { text = "GPL-3.0-only" }
 classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Graphics :: Viewers",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=4.0.0",
+    "black>=21.0.0",
+    "flake8>=3.8.0",
+    "mypy>=0.910",
+    "pre-commit>=2.15.0",
+    "build>=0.8.0",
+    "twine>=4.0.0",
 ]
 
 [tool.pyinstaller]
@@ -31,3 +49,52 @@ distpath = "dist"
 script = "main.py"
 onefile = true
 noconsole = true
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--disable-warnings",
+    "-v"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]

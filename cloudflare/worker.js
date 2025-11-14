@@ -18,8 +18,8 @@ C_RED=$'\\033[38;2;244;67;54m'        # #f44336
 C_YELLOW=$'\\033[38;2;255;193;7m'     # #ffc107
 C_BOLD=$'\\033[1m'
 
-REPO_URL="https://github.com/akshat/imageviewer"
-BINARY_URL="https://github.com/akshat/imageviewer/releases/latest/download/imageviewer"
+REPO_URL="https://github.com/IntegerAlex/imager-viewer"
+BINARY_URL="https://github.com/IntegerAlex/imager-viewer/releases/latest/download/imageviewer"
 INSTALL_DIR="\${HOME}/.local/bin"
 
 echo ""
@@ -143,8 +143,8 @@ function Write-Warning { Write-ColorOutput Yellow $args }
 function Write-Info { Write-ColorOutput Cyan $args }
 
 # Configuration
-$REPO_URL = "https://github.com/akshat/imageviewer"
-$BINARY_URL = "https://github.com/akshat/imageviewer/releases/latest/download/imageviewer.exe"
+$REPO_URL = "https://github.com/IntegerAlex/imager-viewer"
+$BINARY_URL = "https://github.com/IntegerAlex/imager-viewer/releases/latest/download/imageviewer.exe"
 $INSTALL_DIR = Join-Path $env:LOCALAPPDATA "Programs\\imageviewer"
 $BINARY_PATH = Join-Path $INSTALL_DIR "imageviewer.exe"
 

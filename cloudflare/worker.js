@@ -102,19 +102,14 @@ chmod +x "\$INSTALL_DIR/imageviewer"
 echo "\${C_GREEN}[SUCCESS] ImageViewer installed to \$INSTALL_DIR/imageviewer\${C_RESET}"
 echo ""
 
-# Check if directory is on PATH
-case ":\$PATH:" in
-  *:"\\$INSTALL_DIR":*)
-    echo "\${C_GREEN}[OK] \$INSTALL_DIR is on your PATH\${C_RESET}"
-    ;;
-  *)
-    echo "\${C_YELLOW}[WARNING] \$INSTALL_DIR is not on your PATH.\${C_RESET}"
-    echo "Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
-    echo ""
-    echo "  export PATH=\"\$INSTALL_DIR:\\\\\$PATH\""
-    echo ""
-    ;;
-esac
+# Provide PATH setup instructions
+echo "\${C_BLUE}To use ImageViewer from anywhere, ensure $INSTALL_DIR is in your PATH.\${C_RESET}"
+echo ""
+echo "Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+echo "  export PATH=\"$INSTALL_DIR:\\\$PATH\""
+echo ""
+echo "Or run this command in your current session:"
+echo "  export PATH=\"$INSTALL_DIR:\\\$PATH\""
 
 echo ""
 echo "\${C_BOLD}\${C_GREEN}Installation complete! Run 'imageviewer' to get started.\${C_RESET}"

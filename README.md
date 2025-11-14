@@ -38,6 +38,32 @@ install.bat               # Simple batch wrapper
 python install.py         # Cross-platform wrapper
 ```
 
+### Remote Installation
+
+For the quickest installation experience, you can install ImageViewer directly from our remote installer:
+
+#### Linux/macOS
+```bash
+curl -fsSL https://imageviewer-installer.gossorg.in/install.sh | bash
+```
+
+#### Windows (PowerShell)
+```powershell
+irm https://imageviewer-installer.gossorg.in/install.ps1 | iex
+```
+
+#### Windows (Command Prompt)
+```cmd
+curl -fsSL https://imageviewer-installer.gossorg.in/install.ps1 | powershell -ExecutionPolicy Bypass -
+```
+
+The remote installer will:
+- Download the latest pre-built binary for your platform
+- Verify binary integrity with SHA256 checksums
+- Install to the appropriate location
+- Add to your PATH automatically
+- Provide usage instructions
+
 ### Usage
 
 #### Activate Virtual Environment
@@ -201,6 +227,47 @@ pyinstaller --clean --workpath build --distpath dist --onefile --noconsole --nam
 - **uv** - Modern Python package manager (recommended)
 - **PyInstaller** - For building standalone executables
 - **Development tools** - pytest, black, flake8, mypy (for development)
+
+## Deploying Remote Installer
+
+The remote installer is powered by Cloudflare Workers. To deploy it:
+
+1. **Install Wrangler CLI:**
+   ```bash
+   npm install -g wrangler
+   ```
+
+2. **Authenticate with Cloudflare:**
+   ```bash
+   wrangler auth login
+   ```
+
+3. **Configure your domain** in `cloudflare/wrangler.toml`:
+   ```toml
+   [[routes]]
+   pattern = "imageviewer-installer.yourdomain.com/*"
+   zone_name = "yourdomain.com"
+   ```
+
+4. **Deploy the worker:**
+   ```bash
+   ./scripts/deploy-worker.sh
+   ```
+
+### Local Development
+
+Test the worker locally:
+```bash
+cd cloudflare
+wrangler dev
+```
+
+Test the endpoints:
+```bash
+curl http://localhost:8787/health
+curl http://localhost:8787/install.sh
+curl http://localhost:8787/install.ps1
+```
 
 ## Troubleshooting
 

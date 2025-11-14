@@ -1,4 +1,7 @@
 @echo off
+REM SPDX-License-Identifier: GPL-3.0-only
+REM Copyright (c) 2024 Akshat Kotpalliwar <inquiry.akshatkotpalliwar@gmail.com>
+REM
 REM Installer script for imageviewer binary
 REM This script installs the binary to a directory in PATH
 
@@ -8,7 +11,7 @@ echo Installing imageviewer binary...
 
 REM Get the directory where the script is located
 set "SCRIPT_DIR=%~dp0"
-cd /d "%SCRIPT_DIR%"
+cd /d "%SCRIPT_DIR%\.."
 
 set "BINARY_NAME=imageviewer.exe"
 set "BINARY_PATH=dist\%BINARY_NAME%"
@@ -16,7 +19,7 @@ set "BINARY_PATH=dist\%BINARY_NAME%"
 REM Check if binary exists
 if not exist "%BINARY_PATH%" (
     echo Error: Binary not found at %BINARY_PATH%
-    echo Please run build.bat first to build the binary.
+    echo Please run scripts\build.bat first to build the binary.
     exit /b 1
 )
 
@@ -116,7 +119,7 @@ if exist "%INSTALL_PATH%" (
         echo You can run it directly from: %INSTALL_PATH%
     ) else (
         echo Command '%BINARY_NAME%' is available
-        echo You can now run: %BINARY_NAME% ^<image_path^>
+        echo You can now run: imageviewer ^<image_path^>
     )
 ) else (
     echo Installation failed!
@@ -124,4 +127,3 @@ if exist "%INSTALL_PATH%" (
 )
 
 endlocal
-

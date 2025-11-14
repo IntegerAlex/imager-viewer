@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (c) 2024 Akshat Kotpalliwar <inquiry.akshatkotpalliwar@gmail.com>
+#
 # Installer script for imageviewer binary
 # This script installs the binary to a directory in PATH
 
@@ -13,7 +16,7 @@ NC='\033[0m' # No Color
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR/.."
 
 BINARY_NAME="imageviewer"
 BINARY_PATH="dist/${BINARY_NAME}"
@@ -21,7 +24,7 @@ BINARY_PATH="dist/${BINARY_NAME}"
 # Check if binary exists
 if [ ! -f "$BINARY_PATH" ]; then
     echo -e "${RED}Error: Binary not found at $BINARY_PATH${NC}"
-    echo -e "${YELLOW}Please run ./build.sh first to build the binary.${NC}"
+    echo -e "${YELLOW}Please run ./scripts/build.sh first to build the binary.${NC}"
     exit 1
 fi
 
@@ -141,4 +144,3 @@ else
     echo -e "${RED}✗ Installation failed!${NC}"
     exit 1
 fi
-

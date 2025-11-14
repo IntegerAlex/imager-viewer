@@ -1,4 +1,7 @@
 @echo off
+REM SPDX-License-Identifier: GPL-3.0-only
+REM Copyright (c) 2024 Akshat Kotpalliwar <inquiry.akshatkotpalliwar@gmail.com>
+REM
 REM Build script for imageviewer using PyInstaller
 REM This script builds a standalone binary for Windows
 
@@ -26,7 +29,7 @@ if errorlevel 1 (
 
 REM Get the directory where the script is located
 set "SCRIPT_DIR=%~dp0"
-cd /d "%SCRIPT_DIR%"
+cd /d "%SCRIPT_DIR%\.."
 
 REM Clean previous builds
 echo Cleaning previous builds...
@@ -60,4 +63,3 @@ if exist "dist\imageviewer.exe" (
 )
 
 endlocal
-

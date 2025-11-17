@@ -142,44 +142,12 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/IntegerAlex/advance-im
 ### Design Philosophy
 This project embodies a synthesis of classical computer vision techniques with contemporary artificial intelligence paradigms. The application serves as a bridge between traditional image processing methodologies and the transformative potential of generative AI, creating an accessible interface for computational creativity.
 
-### Core Architectural Tenets
-
-**Modularity & Extensibility:**
-- Clean separation of concerns between UI, processing, and AI components
-- Plugin architecture for future AI model integrations
-- Event-driven design patterns for maintainable codebase evolution
-
-**Performance Optimization:**
-- Lazy loading and memory-efficient image handling
-- Asynchronous AI processing to maintain responsive UI
-- Intelligent caching strategies for repeated operations
-
-**Cross-Platform Compatibility:**
-- Native platform integration respecting OS conventions
-- Consistent user experience across diverse computing environments
-- Minimal dependency footprint for broad accessibility
-
-### Future Research Directions
-
-**Advanced AI Integration:**
-- Multi-modal image understanding with contextual reasoning
-- Real-time collaborative editing capabilities
-- Integration with emerging vision-language models
-
-**Performance Enhancements:**
-- GPU acceleration for computationally intensive operations
-- Progressive loading for large image datasets
-- Advanced compression algorithms for network distribution
-
-**User Experience Innovation:**
-- Gesture-based interaction paradigms
-- Voice-controlled image manipulation
-- Immersive augmented reality visualization modes
 
 ## Additional Resources
 
 - **[FEATURES.md](FEATURES.md)**: Comprehensive feature documentation and technical specifications
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: Development guide for contributors and maintainers
+- **[CHANGELOG.md](CHANGELOG.md)**: Version history and release notes
 - **[LICENSE](LICENSE)**: GNU General Public License v3.0 terms and conditions
 - **[COPYRIGHT](COPYRIGHT)**: Copyright notices and licensing information
 

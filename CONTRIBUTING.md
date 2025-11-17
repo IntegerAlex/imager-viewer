@@ -253,8 +253,9 @@ git commit -m "Release v1.2.3"
 ### Documentation
 - Update README.md for user-facing changes
 - Update this CONTRIBUTING.md for development-related changes
+- Update CHANGELOG.md with version history and release notes
 - Include code comments for complex algorithms
-- Maintain changelog in release descriptions
+- Maintain changelog entries for all releases
 
 ## Performance Optimization
 
@@ -282,6 +283,43 @@ p.sort_stats('cumulative').print_stats(20)
 - Exclude unnecessary dependencies
 - Use UPX compression for executables
 - Test builds on target platforms
+
+## Core Architectural Tenets
+
+### Design Philosophy
+This project embodies a synthesis of classical computer vision techniques with contemporary artificial intelligence paradigms. The application serves as a bridge between traditional image processing methodologies and the transformative potential of generative AI, creating an accessible interface for computational creativity.
+
+### Modularity & Extensibility
+- Clean separation of concerns between UI, processing, and AI components
+- Plugin architecture for future AI model integrations
+- Event-driven design patterns for maintainable codebase evolution
+
+### Performance Optimization
+- Lazy loading and memory-efficient image handling
+- Asynchronous AI processing to maintain responsive UI
+- Intelligent caching strategies for repeated operations
+
+### Cross-Platform Compatibility
+- Native platform integration respecting OS conventions
+- Consistent user experience across diverse computing environments
+- Minimal dependency footprint for broad accessibility
+
+## Future Research Directions
+
+### Advanced AI Integration
+- Multi-modal image understanding with contextual reasoning
+- Real-time collaborative editing capabilities
+- Integration with emerging vision-language models
+
+### Performance Enhancements
+- GPU acceleration for computationally intensive operations
+- Progressive loading for large image datasets
+- Advanced compression algorithms for network distribution
+
+### User Experience Innovation
+- Gesture-based interaction paradigms
+- Voice-controlled image manipulation
+- Immersive augmented reality visualization modes
 
 ---
 

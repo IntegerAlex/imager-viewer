@@ -25,6 +25,12 @@ Write-Host "Building release for advance-image-viewer" -ForegroundColor Cyan
 Write-Host "Version: $VERSION" -ForegroundColor Cyan
 Write-Host "Tag: $TAG" -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "⚠️  REMINDER: Update CHANGELOG.md before creating releases!" -ForegroundColor Yellow
+Write-Host "   - Move unreleased changes to version section" -ForegroundColor Yellow
+Write-Host "   - Add new [Unreleased] section for future changes" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "=========================================" -ForegroundColor Cyan
 
 # Check if we're in a git repository
 if (-not (Test-Path .git)) {

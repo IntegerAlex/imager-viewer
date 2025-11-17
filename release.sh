@@ -15,6 +15,12 @@ echo "Building release for advance-image-viewer"
 echo "Version: ${VERSION}"
 echo "Tag: ${TAG}"
 echo "========================================="
+echo ""
+echo "⚠️  REMINDER: Update CHANGELOG.md before creating releases!"
+echo "   - Move unreleased changes to version section"
+echo "   - Add new [Unreleased] section for future changes"
+echo ""
+echo "========================================="
 
 # Check if we're in a git repository
 if ! git rev-parse --git-dir > /dev/null 2>&1; then

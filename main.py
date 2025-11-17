@@ -84,32 +84,31 @@ class SimpleImageViewer:
 
         # Windows-specific font configuration for better rendering
         if sys.platform == 'win32':
-            # On Windows, use string format for font names
-            try:
-                from tkinter import font as tkfont
-                # Try to create Segoe UI font, fallback to system default if not available
+            # On Windows, use Font objects - ensure root window is ready
+            from tkinter import font as tkfont
+            # Force root window to be ready
+            root.update_idletasks()
+            
+            # Create font objects with proper error handling
+            def create_font(family, size, weight='normal'):
                 try:
-                    default_font = tkfont.Font(family='Segoe UI', size=9)
-                    small_font = tkfont.Font(family='Segoe UI', size=8)
-                    title_font = tkfont.Font(family='Segoe UI', size=10, weight='bold')
-                    metadata_title_font = tkfont.Font(family='Segoe UI', size=9, weight='bold')
+                    return tkfont.Font(family=family, size=size, weight=weight)
                 except Exception:
                     # Fallback to system default
-                    default_font = tkfont.nametofont('TkDefaultFont')
-                    default_font.configure(size=9)
-                    small_font = tkfont.nametofont('TkDefaultFont')
-                    small_font.configure(size=8)
-                    title_font = tkfont.nametofont('TkDefaultFont')
-                    title_font.configure(size=10, weight='bold')
-                    metadata_title_font = tkfont.nametofont('TkDefaultFont')
-                    metadata_title_font.configure(size=9, weight='bold')
-            except Exception:
-                # Ultimate fallback
-                default_font = ('Arial', 9)
-                small_font = ('Arial', 8)
-                title_font = ('Arial', 10, 'bold')
-                metadata_title_font = ('Arial', 9, 'bold')
+                    try:
+                        f = tkfont.nametofont('TkDefaultFont')
+                        f.configure(size=size, weight=weight)
+                        return f
+                    except Exception:
+                        # Last resort: use TkTextFont
+                        return tkfont.Font(size=size, weight=weight)
+            
+            default_font = create_font('Segoe UI', 9)
+            small_font = create_font('Segoe UI', 8)
+            title_font = create_font('Segoe UI', 10, 'bold')
+            metadata_title_font = create_font('Segoe UI', 9, 'bold')
         else:
+            # On Linux/macOS, use tuple format
             default_font = ('Arial', 9)
             small_font = ('Arial', 8)
             title_font = ('Arial', 10, 'bold')

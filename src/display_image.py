@@ -80,4 +80,14 @@ def display_image(viewer, zoom_center=None):
 
     # Update debug info
     viewer.zoom_label.config(text=f"Zoom: {viewer.zoom_level:.1f}x")
+    
+    # Redraw cursor lines if cursor position is known
+    # This ensures lines persist after image redraw
+    try:
+        from src.update_cursor_info import redraw_cursor_lines
+        redraw_cursor_lines(viewer)
+    except Exception:  # pylint: disable=broad-except
+        # If import fails or lines can't be drawn, continue silently
+        # Lines will be redrawn on next mouse movement
+        pass
 

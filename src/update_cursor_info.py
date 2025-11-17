@@ -11,6 +11,9 @@ def update_cursor_info(viewer, event):
     viewer.cursor_pos = (event.x, event.y)
     viewer.cursor_label.config(text=f"Cursor: ({event.x}, {event.y})")
 
+    # Update cursor crosshair lines
+    _update_cursor_lines(viewer, event.x, event.y)
+
     # Get image position and size
     img_x, img_y = viewer.image_pos
     img_w, img_h = viewer.image_size
@@ -53,4 +56,52 @@ def update_cursor_info(viewer, event):
         logger.debug("Cursor outside image bounds: canvas=(%d, %d), image_bounds=(%d,%d)-(%d,%d)", 
                      event.x, event.y, img_x, img_y, img_x + img_w, img_y + img_h)
         viewer.hex_label.config(text="Hex: #000000", fg='white')
+
+
+def _update_cursor_lines(viewer, x, y):
+    """Update the cursor crosshair lines (horizontal red, vertical blue)."""
+    canvas_width = viewer.canvas.winfo_width() or 800
+    canvas_height = viewer.canvas.winfo_height() or 600
+    
+    # Delete existing lines
+    if hasattr(viewer, 'cursor_h_line') and viewer.cursor_h_line is not None:
+        try:
+            viewer.canvas.delete(viewer.cursor_h_line)
+        except Exception:  # pylint: disable=broad-except
+            pass
+    
+    if hasattr(viewer, 'cursor_v_line') and viewer.cursor_v_line is not None:
+        try:
+            viewer.canvas.delete(viewer.cursor_v_line)
+        except Exception:  # pylint: disable=broad-except
+            pass
+    
+    # Draw horizontal line (red) - full width
+    viewer.cursor_h_line = viewer.canvas.create_line(
+        0, y, canvas_width, y,
+        fill='red',
+        dash=(5, 5),  # Dashed pattern: 5px dash, 5px gap
+        width=1,
+        tags='cursor_line'
+    )
+    
+    # Draw vertical line (blue) - full height
+    viewer.cursor_v_line = viewer.canvas.create_line(
+        x, 0, x, canvas_height,
+        fill='blue',
+        dash=(5, 5),  # Dashed pattern: 5px dash, 5px gap
+        width=1,
+        tags='cursor_line'
+    )
+    
+    # Move lines to top of drawing order (above image)
+    viewer.canvas.tag_raise('cursor_line')
+    
+    logger.debug("Cursor lines updated at (%d, %d)", x, y)
+
+
+def redraw_cursor_lines(viewer):
+    """Redraw cursor lines at current cursor position if available."""
+    if hasattr(viewer, 'cursor_pos') and viewer.cursor_pos:
+        _update_cursor_lines(viewer, viewer.cursor_pos[0], viewer.cursor_pos[1])
 

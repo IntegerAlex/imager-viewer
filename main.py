@@ -71,9 +71,11 @@ class SimpleImageViewer:
         tk.Label(controls_frame, text="API KEY", bg='gray15', fg='white', font=('Arial', 9)).pack(anchor=tk.W)
         self.api_key_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT, show="•")
         self.api_key_entry.pack(fill=tk.X, pady=(2, 6))
-        env_key = os.environ.get("GEMINI_API_KEY")
+        # Check for GOSS_GEMINI_API_KEY first, fallback to GEMINI_API_KEY for backward compatibility
+        env_key = os.environ.get("GOSS_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
         if env_key:
             self.api_key_entry.insert(0, env_key)
+            self._log_debug("API key auto-filled from environment variable")
 
         tk.Label(controls_frame, text="PROMPT", bg='gray15', fg='white', font=('Arial', 9)).pack(anchor=tk.W)
         self.prompt_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT)
@@ -140,6 +142,10 @@ class SimpleImageViewer:
         self.is_panning = False
         self.pan_start_pos = None
         self.pan_start_image_pos = None
+        
+        # Cursor crosshair lines
+        self.cursor_h_line = None  # Horizontal line ID
+        self.cursor_v_line = None  # Vertical line ID
 
         # Metadata text
         self.update_metadata_panel()
@@ -185,11 +191,18 @@ class SimpleImageViewer:
             image_bytes = generate_image_edit(api_key, prompt, self.image_path)
         except (ValueError, GeminiServiceError, OSError) as exc:
             self._log_debug("Gemini generation failed: %s", exc)
-            self.root.after(0, lambda: self._generation_failed(str(exc)))
+            error_msg = str(exc)
+            # Check if it's a rate limit error
+            if "rate limit" in error_msg.lower() or "429" in error_msg or "retry budget" in error_msg.lower():
+                error_msg = "Rate limited. Please wait a few minutes and try again."
+            self.root.after(0, lambda: self._generation_failed(error_msg))
             return
         except Exception as exc:  # pylint: disable=broad-except
             self._log_debug("Unexpected Gemini generation error: %s", exc)
-            self.root.after(0, lambda: self._generation_failed(f"Unexpected error: {exc}"))
+            error_msg = str(exc)
+            if "rate limit" in error_msg.lower() or "429" in error_msg:
+                error_msg = "Rate limited. Please wait a few minutes and try again."
+            self.root.after(0, lambda: self._generation_failed(f"Unexpected error: {error_msg}"))
             return
 
         self.root.after(0, lambda: self._generation_succeeded(image_bytes))

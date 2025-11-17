@@ -3,9 +3,19 @@ import json
 import logging
 import mimetypes
 import os
+import random
 import time
 from typing import Tuple
 from urllib.parse import parse_qs, urlparse
+
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None
+    types = None
+    logger = logging.getLogger(__name__)
+    logger.warning("google-genai package not found. Falling back to direct HTTP requests.")
 
 import requests
 
@@ -54,33 +64,64 @@ def _normalize_api_key(raw_key: str) -> str:
         # Drop any trailing query parameters, fragments, or whitespace
         key = key.split("&")[0].split("#")[0].split("?")[0].strip()
 
-    # Handle accidental duplication (e.g., "AIza...AIza...")
-    # Look for the pattern where a key might be repeated
-    # Gemini API keys typically start with "AIza" and are ~39 characters
-    # If we see "AIza" twice, take the first occurrence
-    if key.count("AIza") > 1:
-        # Find the first occurrence and extract a reasonable key length
+    # Find the first valid API key pattern (starts with "AIza")
+    # This handles cases where there's junk before/after the actual key
+    if "AIza" in key:
         first_aiza = key.find("AIza")
-        # Typical API key length is around 39 chars, but we'll be generous
-        # Extract up to 50 chars from the first "AIza" occurrence
-        potential_key = key[first_aiza:first_aiza + 50]
-        # If it looks like a valid key (starts with AIza and has reasonable length)
-        if len(potential_key) >= 20:  # Minimum reasonable key length
-            key = potential_key
-            logger.debug("Detected duplicated API key, using first occurrence")
-
-    # Final cleanup: remove any remaining trailing characters that aren't part of the key
-    # API keys are alphanumeric with some special chars, typically end with alphanumeric
-    # Remove trailing non-alphanumeric characters except if they're part of the key
+        # Extract from "AIza" onwards, stopping at invalid characters
+        potential_key = key[first_aiza:]
+        
+        # Extract only valid API key characters
+        # API keys typically contain: A-Z, a-z, 0-9, and some special chars like -_=
+        # Stop at first invalid character (whitespace, newline, etc.)
+        valid_chars = []
+        for char in potential_key:
+            if char.isalnum() or char in "-_=":
+                valid_chars.append(char)
+            elif char.isspace() or ord(char) < 32:  # Stop at whitespace or control chars
+                break
+            else:
+                # Stop at other invalid characters
+                break
+        
+        key = "".join(valid_chars)
+        logger.debug("Extracted API key starting with 'AIza'")
+    else:
+        # No "AIza" found, try to extract valid characters anyway
+        # Extract only valid API key characters
+        valid_chars = []
+        for char in key:
+            if char.isalnum() or char in "-_=":
+                valid_chars.append(char)
+            elif char.isspace() or ord(char) < 32:  # Stop at whitespace or control chars
+                break
+            else:
+                # Stop at other invalid characters
+                break
+        key = "".join(valid_chars)
+    
+    # Limit key length to reasonable maximum (60 chars should be more than enough)
+    # Typical Gemini API keys are ~39 characters
+    if len(key) > 60:
+        logger.warning("API key seems too long (%d chars), truncating to 60", len(key))
+        key = key[:60]
+    
+    # Validate that key starts with "AIza" (Gemini API keys start with this)
+    if key and not key.startswith("AIza"):
+        logger.warning("API key doesn't start with 'AIza', may be invalid")
+    
+    # Final cleanup: remove any trailing invalid characters
     key = key.rstrip("&?# ")
 
     logger.debug("API key normalized (length: %d, starts with: %s)", len(key), key[:10] if len(key) >= 10 else key)
     return key
 
 
-def _fetch_with_backoff(url: str, headers: dict, payload: dict, retries: int = 5, delay: float = 1.0) -> dict:
+def _fetch_with_backoff(url: str, headers: dict, payload: dict, retries: int = 5, delay: float = 2.0) -> dict:
     """
     Call the Gemini API with exponential backoff to survive transient errors.
+    
+    For 429 (rate limit) errors, uses longer initial delays and checks Retry-After header.
     """
     backoff = delay
     for attempt in range(retries):
@@ -91,15 +132,54 @@ def _fetch_with_backoff(url: str, headers: dict, payload: dict, retries: int = 5
                 logger.debug("Gemini request succeeded on attempt %s", attempt + 1)
                 return response.json()
 
-            if response.status_code == 429 or response.status_code >= 500:
+            if response.status_code == 429:
+                # Rate limit error - check for Retry-After header
+                retry_after = response.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        wait_time = float(retry_after)
+                        logger.warning(
+                            "Gemini rate limit (429). Server suggests waiting %.1fs. Retrying...",
+                            wait_time,
+                        )
+                        if attempt == retries - 1:
+                            break
+                        time.sleep(wait_time)
+                        # Reset backoff after using Retry-After
+                        backoff = delay
+                        continue
+                    except (ValueError, TypeError):
+                        pass  # Fall through to exponential backoff
+                
+                # Use longer backoff for rate limits (start at 5s, double each time)
+                rate_limit_backoff = max(5.0, backoff * 2.5)
+                # Add jitter to avoid thundering herd
+                jitter = random.uniform(0.5, 1.5)
+                wait_time = rate_limit_backoff * jitter
+                
                 logger.warning(
-                    "Gemini transient error (status %s). Retrying in %.1fs",
+                    "Gemini rate limit (429). Retrying in %.1fs (attempt %s/%s)",
+                    wait_time,
+                    attempt + 1,
+                    retries,
+                )
+                if attempt == retries - 1:
+                    break
+                time.sleep(wait_time)
+                backoff = rate_limit_backoff
+                continue
+
+            if response.status_code >= 500:
+                logger.warning(
+                    "Gemini server error (status %s). Retrying in %.1fs",
                     response.status_code,
                     backoff,
                 )
                 if attempt == retries - 1:
                     break
-                time.sleep(backoff)
+                # Add jitter for server errors too
+                jitter = random.uniform(0.8, 1.2)
+                time.sleep(backoff * jitter)
                 backoff *= 2
                 continue
 
@@ -110,10 +190,15 @@ def _fetch_with_backoff(url: str, headers: dict, payload: dict, retries: int = 5
             logger.warning("Gemini request exception: %s", exc)
             if attempt == retries - 1:
                 raise GeminiServiceError(f"Failed to reach Gemini API: {exc}") from exc
-            time.sleep(backoff)
+            # Add jitter for network errors
+            jitter = random.uniform(0.8, 1.2)
+            time.sleep(backoff * jitter)
             backoff *= 2
 
-    raise GeminiServiceError("Exceeded retry budget when calling Gemini API.")
+    raise GeminiServiceError(
+        "Exceeded retry budget when calling Gemini API. "
+        "You may be rate limited - please wait a few minutes and try again."
+    )
 
 
 def _encode_image(image_path: str) -> Tuple[str, str]:
@@ -134,6 +219,8 @@ def _encode_image(image_path: str) -> Tuple[str, str]:
 def generate_image_edit(api_key: str, prompt: str, image_path: str) -> bytes:
     """
     Submit the provided image and prompt to Gemini and return the generated bytes.
+    
+    Uses the official Google Generative AI SDK if available, otherwise falls back to direct HTTP requests.
     """
     if not api_key:
         raise ValueError("API key is required.")
@@ -146,8 +233,156 @@ def generate_image_edit(api_key: str, prompt: str, image_path: str) -> bytes:
         raise ValueError("API key is required (normalization resulted in empty key).")
 
     logger.debug("Preparing Gemini image edit call for %s", image_path)
+    
+    # Try using the official SDK first
+    if genai is not None:
+        try:
+            return _generate_with_sdk(normalized_key, prompt, image_path)
+        except Exception as exc:
+            logger.warning("SDK generation failed, falling back to HTTP: %s", exc)
+            # Fall through to HTTP method
+    
+    # Fallback to direct HTTP requests
+    return _generate_with_http(normalized_key, prompt, image_path)
+
+
+def _generate_with_sdk(api_key: str, prompt: str, image_path: str) -> bytes:
+    """Generate image using the official Google Generative AI SDK."""
+    logger.debug("Using Google Generative AI SDK")
+    
+    # Read image file
+    mime_type, _ = mimetypes.guess_type(image_path)
+    if not mime_type:
+        mime_type = "image/png"
+    
+    with open(image_path, "rb") as image_file:
+        image_data = image_file.read()
+    
+    # Create client
+    client = genai.Client(api_key=api_key)
+    
+    # Prepare contents - SDK expects Content objects or a list format
+    # Based on SDK docs, contents should be a list of Content objects or compatible format
+    try:
+        # Try using SDK types if available
+        if types is not None:
+            # Check what types are available
+            if hasattr(types, "Part") and hasattr(types, "Blob"):
+                # Use proper SDK types
+                contents = [
+                    types.Part(text=prompt),
+                    types.Part(
+                        inline_data=types.Blob(
+                            mime_type=mime_type,
+                            data=base64.b64encode(image_data).decode("utf-8")
+                        )
+                    )
+                ]
+            elif hasattr(types, "Content") and hasattr(types, "Part"):
+                # Alternative: wrap in Content
+                contents = types.Content(
+                    parts=[
+                        types.Part(text=prompt),
+                        types.Part(
+                            inline_data={
+                                "mime_type": mime_type,
+                                "data": base64.b64encode(image_data).decode("utf-8")
+                            }
+                        )
+                    ]
+                )
+            else:
+                # Fallback: use dict format matching HTTP API
+                contents = [{
+                    "parts": [
+                        {"text": prompt},
+                        {
+                            "inline_data": {
+                                "mime_type": mime_type,
+                                "data": base64.b64encode(image_data).decode("utf-8")
+                            }
+                        }
+                    ]
+                }]
+        else:
+            # No types module, use dict format
+            contents = [{
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": base64.b64encode(image_data).decode("utf-8")
+                        }
+                    }
+                ]
+            }]
+        
+        # Generate content with image
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-image",
+            contents=contents,
+            config={
+                "response_modalities": ["IMAGE"]
+            }
+        )
+    except Exception as exc:
+        logger.error("SDK generate_content failed: %s", exc)
+        logger.debug("Attempted contents format: %s, type: %s", contents, type(contents))
+        # Re-raise to trigger fallback to HTTP
+        raise GeminiServiceError(f"SDK generation failed: {exc}") from exc
+    
+    # Extract image data from response
+    # Response structure may vary, try multiple access patterns
+    try:
+        # Try accessing via candidates
+        if hasattr(response, "candidates") and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate, "content"):
+                content = candidate.content
+                if hasattr(content, "parts"):
+                    for part in content.parts:
+                        if hasattr(part, "inline_data") and part.inline_data:
+                            if hasattr(part.inline_data, "data"):
+                                image_bytes = base64.b64decode(part.inline_data.data)
+                                logger.debug("SDK response returned image data (%s bytes)", len(image_bytes))
+                                return image_bytes
+        
+        # Try accessing response.text if it's an image (unlikely but possible)
+        if hasattr(response, "text") and response.text:
+            # If response.text contains base64, decode it
+            try:
+                image_bytes = base64.b64decode(response.text)
+                logger.debug("SDK response returned image data from text (%s bytes)", len(image_bytes))
+                return image_bytes
+            except Exception:
+                pass
+        
+        # Try accessing as dict-like structure
+        if isinstance(response, dict):
+            candidates = response.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                for part in parts:
+                    inline_data = part.get("inlineData", {})
+                    if inline_data and "data" in inline_data:
+                        image_bytes = base64.b64decode(inline_data["data"])
+                        logger.debug("SDK response returned image data (%s bytes)", len(image_bytes))
+                        return image_bytes
+        
+    except Exception as exc:
+        logger.error("Failed to extract image from SDK response: %s", exc)
+        logger.debug("Response type: %s, Response: %s", type(response), response)
+    
+    raise GeminiServiceError("SDK response missing image data")
+
+
+def _generate_with_http(api_key: str, prompt: str, image_path: str) -> bytes:
+    """Generate image using direct HTTP requests (fallback method)."""
+    logger.debug("Using direct HTTP requests")
+    
     base64_image, mime_type = _encode_image(image_path)
-    url = f"{DEFAULT_MODEL_URL}?key={normalized_key}"
+    url = f"{DEFAULT_MODEL_URL}?key={api_key}"
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [
@@ -174,7 +409,7 @@ def generate_image_edit(api_key: str, prompt: str, image_path: str) -> bytes:
     if not base64_data:
         raise GeminiServiceError(f"Gemini response missing image data: {json.dumps(response, indent=2)}")
 
-    logger.debug("Gemini response returned inline image data (%s bytes)", len(base64_data))
+    logger.debug("HTTP response returned inline image data (%s bytes)", len(base64_data))
 
     return base64.b64decode(base64_data)
 

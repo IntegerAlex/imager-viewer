@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
+from tkinter import filedialog
 
 from PIL import Image, ImageTk
 
@@ -90,6 +91,16 @@ class SimpleImageViewer:
             command=self.handle_generate_click,
         )
         self.action_button.pack(fill=tk.X, pady=(4, 4))
+
+        self.save_button = tk.Button(
+            controls_frame,
+            text="Save Image",
+            relief=tk.FLAT,
+            bg='gray30',
+            fg='white',
+            command=self.handle_save_click,
+        )
+        self.save_button.pack(fill=tk.X, pady=(4, 0))
 
         self.status_var = tk.StringVar(value="Awaiting prompt…")
         self.status_label = tk.Label(
@@ -184,6 +195,40 @@ class SimpleImageViewer:
             daemon=True,
         )
         worker.start()
+
+    def handle_save_click(self):
+        """Handle save button click - open file dialog and save image."""
+        try:
+            # Get the original filename to suggest as default
+            default_filename = os.path.basename(self.image_path)
+            default_name, default_ext = os.path.splitext(default_filename)
+            if not default_ext:
+                default_ext = ".png"
+            
+            # Open file save dialog
+            file_path = filedialog.asksaveasfilename(
+                title="Save Image As",
+                defaultextension=default_ext,
+                filetypes=[
+                    ("PNG files", "*.png"),
+                    ("JPEG files", "*.jpg"),
+                    ("JPEG files", "*.jpeg"),
+                    ("All files", "*.*"),
+                ],
+                initialfile=default_filename,
+            )
+            
+            if file_path:
+                # Save the original image (not the zoomed/resized version)
+                self.original_image.save(file_path)
+                self._set_status(f"Image saved to: {os.path.basename(file_path)}", error=False)
+                self._log_debug("Image saved to: %s", file_path)
+            else:
+                self._log_debug("Save cancelled by user")
+        except Exception as exc:  # pylint: disable=broad-except
+            error_msg = f"Failed to save image: {exc}"
+            self._set_status(error_msg, error=True)
+            self._log_debug("Save failed: %s", exc)
 
     def _run_generation(self, api_key, prompt):
         self._log_debug("Gemini generation started on worker thread.")

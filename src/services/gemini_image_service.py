@@ -335,46 +335,97 @@ def _generate_with_sdk(api_key: str, prompt: str, image_path: str) -> bytes:
     # Extract image data from response
     # Response structure may vary, try multiple access patterns
     try:
-        # Try accessing via candidates
+        logger.debug("Extracting image from SDK response. Response type: %s", type(response))
+        
+        # Try accessing via candidates (most common path)
         if hasattr(response, "candidates") and response.candidates:
             candidate = response.candidates[0]
+            logger.debug("Candidate found, type: %s", type(candidate))
+            
             if hasattr(candidate, "content"):
                 content = candidate.content
+                logger.debug("Content found, type: %s", type(content))
+                
                 if hasattr(content, "parts"):
-                    for part in content.parts:
+                    logger.debug("Parts found: %d parts", len(content.parts))
+                    for i, part in enumerate(content.parts):
+                        logger.debug("Part %d: type=%s, dir=%s", i, type(part), [x for x in dir(part) if not x.startswith('_')])
+                        
+                        # Try inline_data (snake_case)
                         if hasattr(part, "inline_data") and part.inline_data:
-                            if hasattr(part.inline_data, "data"):
-                                image_bytes = base64.b64decode(part.inline_data.data)
+                            logger.debug("Found inline_data (snake_case)")
+                            inline_data = part.inline_data
+                            if hasattr(inline_data, "data"):
+                                data = inline_data.data
+                                logger.debug("Data found, type: %s, length: %d", type(data), len(data) if isinstance(data, (str, bytes)) else 0)
+                                # Try decoding if it's a string
+                                if isinstance(data, str):
+                                    image_bytes = base64.b64decode(data)
+                                elif isinstance(data, bytes):
+                                    image_bytes = data
+                                else:
+                                    continue
                                 logger.debug("SDK response returned image data (%s bytes)", len(image_bytes))
-                                return image_bytes
-        
-        # Try accessing response.text if it's an image (unlikely but possible)
-        if hasattr(response, "text") and response.text:
-            # If response.text contains base64, decode it
-            try:
-                image_bytes = base64.b64decode(response.text)
-                logger.debug("SDK response returned image data from text (%s bytes)", len(image_bytes))
-                return image_bytes
-            except Exception:
-                pass
+                                if len(image_bytes) > 1000:  # Sanity check - images should be larger
+                                    return image_bytes
+                                else:
+                                    logger.warning("Image data too small (%d bytes), continuing search", len(image_bytes))
+                        
+                        # Try inlineData (camelCase)
+                        if hasattr(part, "inlineData") and part.inlineData:
+                            logger.debug("Found inlineData (camelCase)")
+                            inline_data = part.inlineData
+                            if hasattr(inline_data, "data"):
+                                data = inline_data.data
+                                logger.debug("Data found, type: %s, length: %d", type(data), len(data) if isinstance(data, (str, bytes)) else 0)
+                                if isinstance(data, str):
+                                    image_bytes = base64.b64decode(data)
+                                elif isinstance(data, bytes):
+                                    image_bytes = data
+                                else:
+                                    continue
+                                logger.debug("SDK response returned image data (%s bytes)", len(image_bytes))
+                                if len(image_bytes) > 1000:
+                                    return image_bytes
         
         # Try accessing as dict-like structure
         if isinstance(response, dict):
+            logger.debug("Response is dict-like")
             candidates = response.get("candidates", [])
             if candidates:
                 parts = candidates[0].get("content", {}).get("parts", [])
                 for part in parts:
-                    inline_data = part.get("inlineData", {})
+                    # Try both naming conventions
+                    inline_data = part.get("inlineData") or part.get("inline_data")
                     if inline_data and "data" in inline_data:
-                        image_bytes = base64.b64decode(inline_data["data"])
+                        data = inline_data["data"]
+                        logger.debug("Found data in dict, type: %s", type(data))
+                        if isinstance(data, str):
+                            image_bytes = base64.b64decode(data)
+                        elif isinstance(data, bytes):
+                            image_bytes = data
+                        else:
+                            continue
                         logger.debug("SDK response returned image data (%s bytes)", len(image_bytes))
-                        return image_bytes
+                        if len(image_bytes) > 1000:
+                            return image_bytes
+        
+        # Try accessing response.text if it's an image (unlikely but possible)
+        if hasattr(response, "text") and response.text:
+            logger.debug("Trying response.text")
+            try:
+                image_bytes = base64.b64decode(response.text)
+                logger.debug("SDK response returned image data from text (%s bytes)", len(image_bytes))
+                if len(image_bytes) > 1000:
+                    return image_bytes
+            except Exception as exc:
+                logger.debug("Failed to decode response.text: %s", exc)
         
     except Exception as exc:
-        logger.error("Failed to extract image from SDK response: %s", exc)
-        logger.debug("Response type: %s, Response: %s", type(response), response)
+        logger.error("Failed to extract image from SDK response: %s", exc, exc_info=True)
+        logger.debug("Response type: %s, Response repr: %s", type(response), repr(response)[:500])
     
-    raise GeminiServiceError("SDK response missing image data")
+    raise GeminiServiceError("SDK response missing image data or image data too small")
 
 
 def _generate_with_http(api_key: str, prompt: str, image_path: str) -> bytes:

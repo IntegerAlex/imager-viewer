@@ -121,6 +121,35 @@ python build.py --clean
 
 The build includes all dependencies and creates a single-file executable that can run without Python installed.
 
+## Creating Releases
+
+To create a GitHub release with binaries:
+
+### Prerequisites
+
+- GitHub CLI (`gh`) installed and authenticated
+- Git repository with remote configured
+
+### Linux/macOS
+
+```bash
+./release.sh
+```
+
+### Windows
+
+```powershell
+.\release.ps1
+```
+
+The release script will:
+1. Build the binary for the current platform
+2. Create git tags (`v0.1.0` and `latest`)
+3. Create GitHub releases with the binary attached
+4. Upload assets to GitHub
+
+**Note**: To release for multiple platforms, run the script on each platform or use GitHub Actions for automated builds.
+
 ## Debug Mode
 
 ![Debug Panel](debug.png)

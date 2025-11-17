@@ -5,7 +5,18 @@ $ErrorActionPreference = "Stop"
 
 $REPO = "IntegerAlex/advance-image-viewer"
 $BINARY_NAME = "imageviewer.exe"
-$VERSION = (Select-String -Path "pyproject.toml" -Pattern '^version =' | ForEach-Object { $_ -match 'version = "(.*)"' | Out-Null; $matches[1] })
+$versionLine = Select-String -Path "pyproject.toml" -Pattern '^version ='
+if ($versionLine) {
+    if ($versionLine.Line -match 'version = "([^"]+)"') {
+        $VERSION = $matches[1]
+    } else {
+        Write-Host "Error: Could not parse version from pyproject.toml" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "Error: Could not find version in pyproject.toml" -ForegroundColor Red
+    exit 1
+}
 $TAG = "v$VERSION"
 $LATEST_TAG = "latest"
 

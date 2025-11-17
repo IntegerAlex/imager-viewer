@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 class SimpleImageViewer:
     def __init__(self, root, image_path, debug_enabled=False, logger_instance=None):
         self.root = root
-        self.root.title("Image Viewer")
+        self.root.title("advance-image-viewer")
         self.root.geometry("1000x600")
         self.logger = logger_instance or logging.getLogger(self.__class__.__name__)
         self.debug_enabled = debug_enabled
@@ -360,7 +360,7 @@ class SimpleImageViewer:
             self.logger.debug(message, *args)
 
 def parse_cli_args():
-    parser = argparse.ArgumentParser(description="Simple image viewer with Gemini integration.")
+    parser = argparse.ArgumentParser(description="An opiniated imageviewer (its a viewer not editor) with AI.")
     parser.add_argument("image_path", help="Path to the image file to open.")
     parser.add_argument(
         "--debug",

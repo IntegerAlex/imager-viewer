@@ -1,6 +1,6 @@
-# Image Viewer
+# advance-image-viewer
 
-A simple image viewer with Gemini AI image editing integration.
+An opiniated imageviewer (its a viewer not editor) with AI.
 
 ![Application Screenshot](application.png)
 
@@ -54,9 +54,46 @@ The API key field accepts:
 
 ## Installation
 
+### From Source
+
 ```bash
 pip install -r requirements.txt
 ```
+
+### From Binary (Recommended)
+
+#### Linux/macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IntegerAlex/advance-image-viewer/master/installer.sh | bash
+```
+
+Or download and run manually:
+
+```bash
+chmod +x installer.sh
+./installer.sh
+```
+
+The installer will:
+- Download the latest release binary
+- Install to `~/.local/bin/imageviewer`
+- Add to PATH if needed
+
+#### Windows
+
+Run PowerShell as Administrator:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/IntegerAlex/advance-image-viewer/master/installer.ps1" -OutFile installer.ps1
+.\installer.ps1
+```
+
+The installer will:
+- Download the latest release binary
+- Install to `%LOCALAPPDATA%\Programs\advance-image-viewer\imageviewer.exe`
+- Add to PATH automatically
 
 ## Building Standalone Executable
 

@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "imageviewer"
+name = "advance-image-viewer"
 version = "0.1.0"
 authors = [
   { name="Akshat Kotpalliwar", email="akshatkot@gmail.com" }
 ]
-description = "A simple, memory-efficient image viewer with cursor-focused zoom"
+description = "An opiniated imageviewer (its a viewer not editor) with AI"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

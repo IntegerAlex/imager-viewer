@@ -84,11 +84,36 @@ class SimpleImageViewer:
 
         # Windows-specific font configuration for better rendering
         if sys.platform == 'win32':
-            default_font = ('Segoe UI', 9)
-            small_font = ('Segoe UI', 8)
+            # On Windows, use string format for font names
+            try:
+                from tkinter import font as tkfont
+                # Try to create Segoe UI font, fallback to system default if not available
+                try:
+                    default_font = tkfont.Font(family='Segoe UI', size=9)
+                    small_font = tkfont.Font(family='Segoe UI', size=8)
+                    title_font = tkfont.Font(family='Segoe UI', size=10, weight='bold')
+                    metadata_title_font = tkfont.Font(family='Segoe UI', size=9, weight='bold')
+                except Exception:
+                    # Fallback to system default
+                    default_font = tkfont.nametofont('TkDefaultFont')
+                    default_font.configure(size=9)
+                    small_font = tkfont.nametofont('TkDefaultFont')
+                    small_font.configure(size=8)
+                    title_font = tkfont.nametofont('TkDefaultFont')
+                    title_font.configure(size=10, weight='bold')
+                    metadata_title_font = tkfont.nametofont('TkDefaultFont')
+                    metadata_title_font.configure(size=9, weight='bold')
+            except Exception:
+                # Ultimate fallback
+                default_font = ('Arial', 9)
+                small_font = ('Arial', 8)
+                title_font = ('Arial', 10, 'bold')
+                metadata_title_font = ('Arial', 9, 'bold')
         else:
             default_font = ('Arial', 9)
             small_font = ('Arial', 8)
+            title_font = ('Arial', 10, 'bold')
+            metadata_title_font = ('Arial', 9, 'bold')
         
         tk.Label(controls_frame, text="API KEY", bg='gray15', fg='white', font=default_font).pack(anchor=tk.W)
         self.api_key_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT, show="•", font=default_font)
@@ -134,8 +159,7 @@ class SimpleImageViewer:
         self.status_label.pack(anchor=tk.W)
 
         # Debug labels
-        debug_title_font = ('Segoe UI', 10, 'bold') if sys.platform == 'win32' else ('Arial', 10, 'bold')
-        tk.Label(debug_frame, text="DEBUG INFO", bg='gray15', fg='white', font=debug_title_font).pack(pady=(0, 10))
+        tk.Label(debug_frame, text="DEBUG INFO", bg='gray15', fg='white', font=title_font).pack(pady=(0, 10))
         
         self.cursor_label = tk.Label(debug_frame, text="Cursor: (0, 0)", bg='gray15', fg='white', font=default_font)
         self.cursor_label.pack(anchor=tk.W, pady=2)
@@ -151,7 +175,6 @@ class SimpleImageViewer:
         metadata_frame = tk.Frame(debug_frame, bg='gray13', padx=5, pady=5)
         metadata_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
 
-        metadata_title_font = ('Segoe UI', 9, 'bold') if sys.platform == 'win32' else ('Arial', 9, 'bold')
         tk.Label(metadata_frame, text="IMAGE METADATA", bg='gray13', fg='white', font=metadata_title_font).pack(anchor=tk.W, pady=(0, 4))
         self.metadata_text = tk.Text(
             metadata_frame,

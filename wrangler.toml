@@ -1,0 +1,11 @@
+name = "advance-image-viewer-installer"
+main = "cloudflare/installer.js"
+compatibility_date = "2025-11-15"
+
+# Worker configuration
+workers_dev = true
+
+# Routes (uncomment and configure when deploying to a custom domain)
+# routes = [
+#   { pattern = "install.advance-image-viewer.com", custom_domain = true }
+# ]

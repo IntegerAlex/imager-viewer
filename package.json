@@ -1,0 +1,22 @@
+{
+  "name": "advance-image-viewer-installer",
+  "version": "0.1.0",
+  "description": "Cloudflare Worker for advance-image-viewer installer",
+  "main": "cloudflare/installer.js",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "installer"
+  ],
+  "author": "Akshat Kotpalliwar (alias IntegerAlex) <inquiry.akshatkotpalliwar@gmail.com>",
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
+

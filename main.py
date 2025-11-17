@@ -12,6 +12,7 @@ from PIL import Image, ImageTk
 from src.calculate_max_zoom import calculate_max_zoom as calc_max_zoom
 from src.display_image import display_image as display_image_fn
 from src.handle_zoom import handle_zoom as handle_zoom_fn
+from src.handle_pan import handle_pan_start, handle_pan_drag, handle_pan_end
 from src.zoom_in import zoom_in as zoom_in_fn
 from src.zoom_out import zoom_out as zoom_out_fn
 from src.image_metadata import build_metadata_text
@@ -134,6 +135,11 @@ class SimpleImageViewer:
         self.cursor_pos = (0, 0)
         self.image_pos = (0, 0)
         self.image_size = (0, 0)
+        
+        # Panning state
+        self.is_panning = False
+        self.pan_start_pos = None
+        self.pan_start_image_pos = None
 
         # Metadata text
         self.update_metadata_panel()
@@ -149,6 +155,11 @@ class SimpleImageViewer:
         self.canvas.bind("<Motion>", self.update_cursor_info)
         self.root.bind("<Configure>", self.on_resize)
         self.root.bind("<Escape>", lambda e: root.destroy())
+        
+        # Panning events (left mouse button drag)
+        self.canvas.bind("<Button-1>", self.handle_pan_start)
+        self.canvas.bind("<B1-Motion>", self.handle_pan_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.handle_pan_end)
 
     def handle_generate_click(self):
         api_key = self.api_key_entry.get().strip()
@@ -253,6 +264,18 @@ class SimpleImageViewer:
     def on_resize(self, event):
         """Handle window resize"""
         return on_resize_fn(self, event)
+    
+    def handle_pan_start(self, event):
+        """Handle mouse button press to start panning"""
+        return handle_pan_start(self, event)
+    
+    def handle_pan_drag(self, event):
+        """Handle mouse drag to pan the image"""
+        return handle_pan_drag(self, event)
+    
+    def handle_pan_end(self, event):
+        """Handle mouse button release to end panning"""
+        return handle_pan_end(self, event)
 
     def update_metadata_panel(self):
         """Populate the metadata text widget with extended image details."""

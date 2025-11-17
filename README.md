@@ -17,6 +17,7 @@ python main.py <image_path> [--debug]
 ### Controls
 
 - **Mouse wheel**: Zoom in/out at cursor
+- **Left mouse drag**: Pan the image (when zoomed in)
 - **Ctrl + / -**: Zoom in/out
 - **Escape**: Close viewer
 

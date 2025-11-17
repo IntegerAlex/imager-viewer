@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Akshat Kotpalliwar (alias IntegerAlex) <inquiry.akshatkotpalliwar@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
 """Cursor tracking and pixel color lookup for the debug panel."""
 
 import logging

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Akshat Kotpalliwar (alias IntegerAlex) <inquiry.akshatkotpalliwar@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
 import base64
 import json
 import logging

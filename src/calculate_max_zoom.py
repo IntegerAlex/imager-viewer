@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Akshat Kotpalliwar (alias IntegerAlex) <inquiry.akshatkotpalliwar@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
 """Utilities for computing zoom constraints for the image viewer."""
 
 import logging

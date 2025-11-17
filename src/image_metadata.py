@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Akshat Kotpalliwar (alias IntegerAlex) <inquiry.akshatkotpalliwar@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
 """Utilities for extracting and formatting metadata about the loaded image."""
 
 from __future__ import annotations

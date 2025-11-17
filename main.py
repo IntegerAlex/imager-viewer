@@ -1,4 +1,6 @@
+import argparse
 import io
+import logging
 import os
 import sys
 import tempfile
@@ -20,16 +22,23 @@ from src.services.gemini_image_service import (
 )
 from src.update_cursor_info import update_cursor_info as update_cursor_info_fn
 
+logger = logging.getLogger(__name__)
+
+
 class SimpleImageViewer:
-    def __init__(self, root, image_path):
+    def __init__(self, root, image_path, debug_enabled=False, logger_instance=None):
         self.root = root
         self.root.title("Image Viewer")
         self.root.geometry("1000x600")
+        self.logger = logger_instance or logging.getLogger(self.__class__.__name__)
+        self.debug_enabled = debug_enabled
+        self._log_debug("SimpleImageViewer initializing for %s", image_path)
         
         # Load image
         try:
             self.original_image = Image.open(image_path)
             self.original_size = self.original_image.size
+            self._log_debug("Loaded image %s (%s)", image_path, self.original_size)
         except Exception as e:
             print(f"Error loading image: {e}")
             sys.exit(1)
@@ -39,6 +48,7 @@ class SimpleImageViewer:
         self.min_zoom = 1.0
         self.max_zoom = self.calculate_max_zoom()
         self.zoom_level = self.min_zoom  # Start at minimum zoom (1.0x)
+        self._log_debug("Zoom constraints -> min: %.2f, max: %.2f", self.min_zoom, self.max_zoom)
         
         # Main frame to hold canvas and debug panel
         main_frame = tk.Frame(root)
@@ -144,6 +154,7 @@ class SimpleImageViewer:
         api_key = self.api_key_entry.get().strip()
         prompt = self.prompt_entry.get().strip()
 
+        self._log_debug("Generate clicked. prompt_len=%s, key_provided=%s", len(prompt), bool(api_key))
         if not api_key or not prompt:
             self._set_status("API key and prompt are required.", error=True)
             return
@@ -158,12 +169,15 @@ class SimpleImageViewer:
         worker.start()
 
     def _run_generation(self, api_key, prompt):
+        self._log_debug("Gemini generation started on worker thread.")
         try:
             image_bytes = generate_image_edit(api_key, prompt, self.image_path)
         except (ValueError, GeminiServiceError, OSError) as exc:
+            self._log_debug("Gemini generation failed: %s", exc)
             self.root.after(0, lambda: self._generation_failed(str(exc)))
             return
         except Exception as exc:  # pylint: disable=broad-except
+            self._log_debug("Unexpected Gemini generation error: %s", exc)
             self.root.after(0, lambda: self._generation_failed(f"Unexpected error: {exc}"))
             return
 
@@ -177,6 +191,7 @@ class SimpleImageViewer:
         try:
             new_image = Image.open(io.BytesIO(image_bytes))
             new_image.load()
+            self._log_debug("Generated image loaded (%s)", new_image.size)
         except Exception as exc:  # pylint: disable=broad-except
             self._generation_failed(f"Failed to load generated image: {exc}")
             return
@@ -201,6 +216,7 @@ class SimpleImageViewer:
         )
         with tmp_file:
             tmp_file.write(image_bytes)
+        self._log_debug("Generated image persisted to %s", tmp_file.name)
         return tmp_file.name
 
     def _set_status(self, message, error=False):
@@ -208,6 +224,7 @@ class SimpleImageViewer:
         self.status_var.set(message)
         if hasattr(self, "status_label"):
             self.status_label.config(fg=color)
+        self._log_debug("Status update -> %s", message)
     
     def calculate_max_zoom(self):
         """Calculate max zoom to not exceed 4K resolution"""
@@ -244,17 +261,45 @@ class SimpleImageViewer:
         self.metadata_text.delete("1.0", tk.END)
         self.metadata_text.insert(tk.END, metadata)
         self.metadata_text.config(state=tk.DISABLED)
+        self._log_debug("Metadata panel refreshed for %s", self.image_path)
+
+    def _log_debug(self, message, *args):
+        if self.debug_enabled:
+            self.logger.debug(message, *args)
+
+def parse_cli_args():
+    parser = argparse.ArgumentParser(description="Simple image viewer with Gemini integration.")
+    parser.add_argument("image_path", help="Path to the image file to open.")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable verbose debug logging.",
+    )
+    return parser.parse_args()
+
+
+def configure_logging(debug_enabled: bool):
+    level = logging.DEBUG if debug_enabled else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+
+def main():
+    args = parse_cli_args()
+    configure_logging(args.debug)
+    logger.info("Launching SimpleImageViewer (debug=%s)", args.debug)
+
+    if not os.path.exists(args.image_path):
+        logger.error("Image not found: %s", args.image_path)
+        print(f"Image not found: {args.image_path}")
+        sys.exit(1)
+
+    root = tk.Tk()
+    app = SimpleImageViewer(root, args.image_path, debug_enabled=args.debug, logger_instance=logger)
+    root.mainloop()
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python imageviewer.py <image_path>")
-        sys.exit(1)
-    
-    image_path = sys.argv[1]
-    if not os.path.exists(image_path):
-        print(f"Image not found: {image_path}")
-        sys.exit(1)
-    
-    root = tk.Tk()
-    app = SimpleImageViewer(root, image_path)
-    root.mainloop()
+    main()

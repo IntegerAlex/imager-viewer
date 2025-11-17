@@ -434,12 +434,6 @@ def main():
     
     # Windows-specific optimizations
     if sys.platform == 'win32':
-        # Enable better font rendering
-        try:
-            root.option_add('*Font', 'Segoe UI 9')
-        except Exception:
-            pass
-        
         # Improve canvas rendering quality
         try:
             # Set canvas to use better rendering

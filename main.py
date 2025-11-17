@@ -59,8 +59,18 @@ class SimpleImageViewer:
         main_frame = tk.Frame(root)
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Canvas setup
-        self.canvas = tk.Canvas(main_frame, bg='gray20', highlightthickness=0)
+        # Canvas setup with Windows quality improvements
+        canvas_config = {
+            'bg': 'gray20',
+            'highlightthickness': 0,
+        }
+        if sys.platform == 'win32':
+            # Windows-specific canvas optimizations
+            canvas_config.update({
+                'borderwidth': 0,
+                'relief': tk.FLAT,
+            })
+        self.canvas = tk.Canvas(main_frame, **canvas_config)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Debug panel frame
@@ -72,8 +82,16 @@ class SimpleImageViewer:
         controls_frame = tk.Frame(debug_frame, bg='gray15')
         controls_frame.pack(fill=tk.X, pady=(0, 10))
 
-        tk.Label(controls_frame, text="API KEY", bg='gray15', fg='white', font=('Arial', 9)).pack(anchor=tk.W)
-        self.api_key_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT, show="•")
+        # Windows-specific font configuration for better rendering
+        if sys.platform == 'win32':
+            default_font = ('Segoe UI', 9)
+            small_font = ('Segoe UI', 8)
+        else:
+            default_font = ('Arial', 9)
+            small_font = ('Arial', 8)
+        
+        tk.Label(controls_frame, text="API KEY", bg='gray15', fg='white', font=default_font).pack(anchor=tk.W)
+        self.api_key_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT, show="•", font=default_font)
         self.api_key_entry.pack(fill=tk.X, pady=(2, 6))
         # Check for GOSS_GEMINI_API_KEY first, fallback to GEMINI_API_KEY for backward compatibility
         env_key = os.environ.get("GOSS_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
@@ -81,8 +99,8 @@ class SimpleImageViewer:
             self.api_key_entry.insert(0, env_key)
             self._log_debug("API key auto-filled from environment variable")
 
-        tk.Label(controls_frame, text="PROMPT", bg='gray15', fg='white', font=('Arial', 9)).pack(anchor=tk.W)
-        self.prompt_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT)
+        tk.Label(controls_frame, text="PROMPT", bg='gray15', fg='white', font=default_font).pack(anchor=tk.W)
+        self.prompt_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT, font=default_font)
         self.prompt_entry.pack(fill=tk.X, pady=(2, 6))
 
         self.action_button = tk.Button(
@@ -111,33 +129,35 @@ class SimpleImageViewer:
             textvariable=self.status_var,
             bg='gray15',
             fg='lightgray',
-            font=('Arial', 8)
+            font=small_font
         )
         self.status_label.pack(anchor=tk.W)
 
         # Debug labels
-        tk.Label(debug_frame, text="DEBUG INFO", bg='gray15', fg='white', font=('Arial', 10, 'bold')).pack(pady=(0, 10))
+        debug_title_font = ('Segoe UI', 10, 'bold') if sys.platform == 'win32' else ('Arial', 10, 'bold')
+        tk.Label(debug_frame, text="DEBUG INFO", bg='gray15', fg='white', font=debug_title_font).pack(pady=(0, 10))
         
-        self.cursor_label = tk.Label(debug_frame, text="Cursor: (0, 0)", bg='gray15', fg='white', font=('Arial', 9))
+        self.cursor_label = tk.Label(debug_frame, text="Cursor: (0, 0)", bg='gray15', fg='white', font=default_font)
         self.cursor_label.pack(anchor=tk.W, pady=2)
         
-        self.hex_label = tk.Label(debug_frame, text="Hex: #000000", bg='gray15', fg='white', font=('Arial', 9))
+        self.hex_label = tk.Label(debug_frame, text="Hex: #000000", bg='gray15', fg='white', font=default_font)
         self.hex_label.pack(anchor=tk.W, pady=2)
         
         # Now self.min_zoom is defined, so this works
-        self.zoom_label = tk.Label(debug_frame, text=f"Zoom: {self.zoom_level:.1f}x", bg='gray15', fg='white', font=('Arial', 9))
+        self.zoom_label = tk.Label(debug_frame, text=f"Zoom: {self.zoom_level:.1f}x", bg='gray15', fg='white', font=default_font)
         self.zoom_label.pack(anchor=tk.W, pady=2)
         
         # Image metadata (bottom of panel)
         metadata_frame = tk.Frame(debug_frame, bg='gray13', padx=5, pady=5)
         metadata_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
 
-        tk.Label(metadata_frame, text="IMAGE METADATA", bg='gray13', fg='white', font=('Arial', 9, 'bold')).pack(anchor=tk.W, pady=(0, 4))
+        metadata_title_font = ('Segoe UI', 9, 'bold') if sys.platform == 'win32' else ('Arial', 9, 'bold')
+        tk.Label(metadata_frame, text="IMAGE METADATA", bg='gray13', fg='white', font=metadata_title_font).pack(anchor=tk.W, pady=(0, 4))
         self.metadata_text = tk.Text(
             metadata_frame,
             bg='gray10',
             fg='white',
-            font=('Arial', 8),
+            font=small_font,
             wrap=tk.WORD,
             height=14,
             relief=tk.FLAT,
@@ -389,6 +409,26 @@ def configure_logging(debug_enabled: bool):
     )
 
 
+def setup_windows_dpi():
+    """Configure DPI awareness for Windows to improve rendering quality."""
+    if sys.platform == 'win32':
+        try:
+            # Try to set DPI awareness for better rendering on high-DPI displays
+            import ctypes
+            # Process DPI awareness
+            try:
+                # Windows 10 version 1607+
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+            except (AttributeError, OSError):
+                try:
+                    # Windows Vista/7/8
+                    ctypes.windll.user32.SetProcessDPIAware()
+                except (AttributeError, OSError):
+                    pass
+        except Exception:
+            pass  # If DPI setup fails, continue anyway
+
+
 def main():
     args = parse_cli_args()
     configure_logging(args.debug)
@@ -399,7 +439,26 @@ def main():
         print(f"Image not found: {args.image_path}")
         sys.exit(1)
 
+    # Setup Windows DPI awareness before creating Tk root
+    setup_windows_dpi()
+    
     root = tk.Tk()
+    
+    # Windows-specific optimizations
+    if sys.platform == 'win32':
+        # Enable better font rendering
+        try:
+            root.option_add('*Font', 'Segoe UI 9')
+        except Exception:
+            pass
+        
+        # Improve canvas rendering quality
+        try:
+            # Set canvas to use better rendering
+            root.tk.call('tk', 'scaling', root.tk.call('winfo', 'fpixels', root, '1i') / 96.0)
+        except Exception:
+            pass
+    
     app = SimpleImageViewer(root, args.image_path, debug_enabled=args.debug, logger_instance=logger)
     root.mainloop()
 

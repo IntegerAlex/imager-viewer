@@ -30,8 +30,15 @@ def display_image(viewer, zoom_center=None):
     new_height = int(viewer.original_size[1] * viewer.zoom_level)
     logger.debug("Resized dimensions: %dx%d (original: %s)", new_width, new_height, viewer.original_size)
 
-    # Resize image
+    # Resize image with high-quality interpolation
+    # LANCZOS provides the best quality for downscaling, LANCZOS for upscaling too
     resized = viewer.original_image.resize((new_width, new_height), Image.LANCZOS)
+    
+    # On Windows, ensure image is converted to RGB mode for better compatibility
+    import sys
+    if sys.platform == 'win32' and resized.mode != 'RGB':
+        resized = resized.convert('RGB')
+    
     viewer.photo = ImageTk.PhotoImage(resized)
 
     # Clear canvas

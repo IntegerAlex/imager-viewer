@@ -4,6 +4,15 @@
 
 block_cipher = None
 
+import os
+
+# Windows manifest for DPI awareness
+manifest = None
+if os.name == 'nt':
+    manifest_path = os.path.join(os.path.dirname(SPECPATH), 'imageviewer.manifest')
+    if os.path.exists(manifest_path):
+        manifest = manifest_path
+
 a = Analysis(
     ['main.py'],
     pathex=[],
@@ -62,4 +71,6 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
+    uac_admin=False,
+    manifest=manifest,
 )

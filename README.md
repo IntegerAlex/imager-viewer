@@ -2,7 +2,7 @@
 
 An opiniated imageviewer (its a viewer not editor) with AI.
 
-![Application Screenshot](application.png)
+![Application Screenshot](screenshots/application.png)
 
 ## Features
 
@@ -25,7 +25,7 @@ python main.py <image_path> [--debug]
 
 ### Gemini Image Editing
 
-![AI Generation Feature](ai-generated.png)
+![AI Generation Feature](screenshots/ai-generated.png)
 
 1. Enter your Gemini API key in the "API KEY" field (or set `GOSS_GEMINI_API_KEY` environment variable)
 2. Enter your prompt in the "PROMPT" field
@@ -64,9 +64,12 @@ pip install -r requirements.txt
 
 #### Linux/macOS
 
+**Via Cloudflare (Recommended):**
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/IntegerAlex/advance-image-viewer/master/installer.sh | bash
+curl -fsSL https://advance-image-viewer.gossorg.in | bash
 ```
+
 
 Or download and run manually:
 
@@ -76,13 +79,27 @@ chmod +x installer.sh
 ```
 
 The installer will:
+
 - Download the latest release binary
 - Install to `~/.local/bin/imageviewer`
 - Add to PATH if needed
 
 #### Windows
 
-Run PowerShell as Administrator:
+**Via Cloudflare (Recommended):**
+
+```powershell
+irm https://advance-image-viewer.gossorg.in | iex
+```
+
+Or with explicit execution policy:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm https://advance-image-viewer.gossorg.in | iex
+```
+
+**Via GitHub (Fallback):**
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -91,6 +108,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/IntegerAlex/advance-im
 ```
 
 The installer will:
+
 - Download the latest release binary
 - Install to `%LOCALAPPDATA%\Programs\advance-image-viewer\imageviewer.exe`
 - Add to PATH automatically
@@ -152,11 +170,11 @@ The release script will:
 
 ## Debug Mode
 
-![Debug Panel](debug.png)
+![Debug Panel](screenshots/debug.png)
 
 The debug panel shows cursor position, pixel color (hex), zoom level, and image metadata.
 
-![Image Metadata Panel](image-metadata.png)
+![Image Metadata Panel](screenshots/image-metadata.png)
 
 Enable verbose logging:
 

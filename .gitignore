@@ -13,3 +13,9 @@ wheels/
 
 # Release binaries
 release/
+
+# Node.js / Cloudflare Worker
+node_modules/
+.wrangler/
+package-lock.json
+yarn.lock

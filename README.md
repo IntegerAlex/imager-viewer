@@ -26,6 +26,7 @@ python main.py <image_path> [--debug]
 1. Enter your Gemini API key in the "API KEY" field (or set `GOSS_GEMINI_API_KEY` environment variable)
 2. Enter your prompt in the "PROMPT" field
 3. Click "Generate" to edit the image
+4. Click "Save Image" to save the current image to a file
 
 **API Key Auto-fill**: The API key field will auto-fill if `GOSS_GEMINI_API_KEY` (or `GEMINI_API_KEY`) is set in your environment.
 

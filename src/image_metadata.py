@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 
 from PIL import ExifTags
+
+logger = logging.getLogger(__name__)
 
 EXIF_TAGS = {tag_id: name for tag_id, name in ExifTags.TAGS.items()}
 
@@ -16,6 +19,7 @@ def build_metadata_text(image_path: str, image) -> str:
     Construct a detailed metadata string for the image, including file system
     details and any EXIF information the image exposes.
     """
+    logger.debug("Building metadata text for image: %s", image_path)
     details = _collect_metadata(image_path, image)
     sections = [
         "FILE INFO",
@@ -35,12 +39,18 @@ def build_metadata_text(image_path: str, image) -> str:
     exif_lines = _format_exif(details["exif"])
     if exif_lines:
         sections.extend(["", "EXIF", *exif_lines])
+        logger.debug("Found %d EXIF tags", len(exif_lines))
+    else:
+        logger.debug("No EXIF data found in image")
 
-    return "\n".join(sections)
+    result = "\n".join(sections)
+    logger.debug("Metadata text built: %d lines, %d bytes", len(sections), len(result))
+    return result
 
 
 def _collect_metadata(image_path: str, image) -> Dict[str, Any]:
     """Gather raw metadata fields for internal use."""
+    logger.debug("Collecting metadata for: %s", image_path)
     abs_path = os.path.abspath(image_path)
     directory = os.path.dirname(abs_path)
     try:
@@ -48,7 +58,9 @@ def _collect_metadata(image_path: str, image) -> Dict[str, Any]:
         size_kb = file_stats.st_size / 1024
         created = _format_timestamp(file_stats.st_ctime)
         modified = _format_timestamp(file_stats.st_mtime)
-    except OSError:
+        logger.debug("File stats: size=%.2f KB, created=%s, modified=%s", size_kb, created, modified)
+    except OSError as exc:
+        logger.debug("Error reading file stats: %s", exc)
         size_kb = 0.0
         created = "Unknown"
         modified = "Unknown"
@@ -56,8 +68,11 @@ def _collect_metadata(image_path: str, image) -> Dict[str, Any]:
     width, height = image.size
     dpi = image.info.get("dpi", ("Unknown", "Unknown"))
     dpi_text = f"{dpi[0]}×{dpi[1]} dpi" if dpi != ("Unknown", "Unknown") else "Unknown"
+    logger.debug("Image dimensions: %dx%d, DPI: %s, format: %s, mode: %s", 
+                 width, height, dpi_text, getattr(image, "format", "Unknown"), image.mode)
 
     exif = _extract_exif(image)
+    logger.debug("Extracted %d EXIF tags", len(exif))
 
     return {
         "filename": os.path.basename(image_path),
@@ -88,10 +103,13 @@ def _extract_exif(image) -> Dict[str, str]:
     exif_data = {}
     try:
         raw_exif = image.getexif()
+        logger.debug("Raw EXIF data retrieved: %d tags", len(raw_exif) if raw_exif else 0)
     except AttributeError:
+        logger.debug("Image does not support EXIF (AttributeError)")
         raw_exif = None
 
     if not raw_exif:
+        logger.debug("No EXIF data available")
         return exif_data
 
     desired_tags = {
@@ -109,8 +127,11 @@ def _extract_exif(image) -> Dict[str, str]:
     for tag_id, value in raw_exif.items():
         tag_name = EXIF_TAGS.get(tag_id)
         if tag_name in desired_tags:
-            exif_data[tag_name] = _format_exif_value(tag_name, value)
+            formatted_value = _format_exif_value(tag_name, value)
+            exif_data[tag_name] = formatted_value
+            logger.debug("EXIF tag extracted: %s = %s", tag_name, formatted_value)
 
+    logger.debug("Total desired EXIF tags found: %d", len(exif_data))
     return exif_data
 
 

@@ -1,5 +1,9 @@
 """Cursor tracking and pixel color lookup for the debug panel."""
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def update_cursor_info(viewer, event):
     """Update cursor position and color hex in debug panel."""
@@ -24,6 +28,8 @@ def update_cursor_info(viewer, event):
         # Ensure coordinates are within bounds
         orig_x = max(0, min(orig_x, viewer.original_size[0] - 1))
         orig_y = max(0, min(orig_y, viewer.original_size[1] - 1))
+        logger.debug("Cursor over image: canvas=(%d, %d) -> image=(%d, %d)", 
+                     event.x, event.y, orig_x, orig_y)
 
         # Get pixel color from original image
         try:
@@ -38,9 +44,13 @@ def update_cursor_info(viewer, event):
             else:
                 hex_color = "#000000"
 
+            logger.debug("Pixel color at (%d, %d): %s (pixel=%s)", orig_x, orig_y, hex_color, pixel)
             viewer.hex_label.config(text=f"Hex: {hex_color}", fg=hex_color)
         except Exception as exc:  # pylint: disable=broad-except
+            logger.debug("Error getting pixel color at (%d, %d): %s", orig_x, orig_y, exc)
             viewer.hex_label.config(text=f"Error: {str(exc)}", fg='white')
     else:
+        logger.debug("Cursor outside image bounds: canvas=(%d, %d), image_bounds=(%d,%d)-(%d,%d)", 
+                     event.x, event.y, img_x, img_y, img_x + img_w, img_y + img_h)
         viewer.hex_label.config(text="Hex: #000000", fg='white')
 

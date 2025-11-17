@@ -1,6 +1,10 @@
 """Rendering logic for displaying the image on the canvas."""
 
+import logging
+
 from PIL import Image, ImageTk
+
+logger = logging.getLogger(__name__)
 
 
 def display_image(viewer, zoom_center=None):
@@ -14,12 +18,14 @@ def display_image(viewer, zoom_center=None):
     zoom_center: tuple[int, int] | None
         Canvas coordinates to keep fixed during zoom.
     """
+    logger.debug("Displaying image at zoom %.2fx (center=%s)", viewer.zoom_level, zoom_center)
     # Apply constraints
     viewer.zoom_level = max(viewer.min_zoom, min(viewer.zoom_level, viewer.max_zoom))
 
     # Calculate new size
     new_width = int(viewer.original_size[0] * viewer.zoom_level)
     new_height = int(viewer.original_size[1] * viewer.zoom_level)
+    logger.debug("Resized dimensions: %dx%d (original: %s)", new_width, new_height, viewer.original_size)
 
     # Resize image
     resized = viewer.original_image.resize((new_width, new_height), Image.LANCZOS)
@@ -70,6 +76,7 @@ def display_image(viewer, zoom_center=None):
     # Store current image position and size
     viewer.image_pos = (new_x, new_y)
     viewer.image_size = (new_width, new_height)
+    logger.debug("Image positioned at (%d, %d) with size %dx%d", new_x, new_y, new_width, new_height)
 
     # Update debug info
     viewer.zoom_label.config(text=f"Zoom: {viewer.zoom_level:.1f}x")

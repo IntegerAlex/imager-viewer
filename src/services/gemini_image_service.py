@@ -1,11 +1,14 @@
 import base64
 import json
+import logging
 import mimetypes
 import os
 import time
 from typing import Tuple
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -23,12 +26,19 @@ def _fetch_with_backoff(url: str, headers: dict, payload: dict, retries: int = 5
     """
     backoff = delay
     for attempt in range(retries):
+        logger.debug("Gemini request attempt %s/%s", attempt + 1, retries)
         try:
             response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60)
             if response.status_code == 200:
+                logger.debug("Gemini request succeeded on attempt %s", attempt + 1)
                 return response.json()
 
             if response.status_code == 429 or response.status_code >= 500:
+                logger.warning(
+                    "Gemini transient error (status %s). Retrying in %.1fs",
+                    response.status_code,
+                    backoff,
+                )
                 if attempt == retries - 1:
                     break
                 time.sleep(backoff)
@@ -39,6 +49,7 @@ def _fetch_with_backoff(url: str, headers: dict, payload: dict, retries: int = 5
                 f"Gemini API error (status {response.status_code}): {response.text}"
             )
         except requests.exceptions.RequestException as exc:
+            logger.warning("Gemini request exception: %s", exc)
             if attempt == retries - 1:
                 raise GeminiServiceError(f"Failed to reach Gemini API: {exc}") from exc
             time.sleep(backoff)
@@ -50,6 +61,7 @@ def _fetch_with_backoff(url: str, headers: dict, payload: dict, retries: int = 5
 def _encode_image(image_path: str) -> Tuple[str, str]:
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image file not found: {image_path}")
+    logger.debug("Encoding image at %s", image_path)
 
     mime_type, _ = mimetypes.guess_type(image_path)
     if not mime_type or not mime_type.startswith("image/"):
@@ -70,6 +82,7 @@ def generate_image_edit(api_key: str, prompt: str, image_path: str) -> bytes:
     if not prompt:
         raise ValueError("Prompt is required.")
 
+    logger.debug("Preparing Gemini image edit call for %s", image_path)
     base64_image, mime_type = _encode_image(image_path)
     url = f"{DEFAULT_MODEL_URL}?key={api_key}"
     headers = {"Content-Type": "application/json"}
@@ -97,6 +110,8 @@ def generate_image_edit(api_key: str, prompt: str, image_path: str) -> bytes:
 
     if not base64_data:
         raise GeminiServiceError(f"Gemini response missing image data: {json.dumps(response, indent=2)}")
+
+    logger.debug("Gemini response returned inline image data (%s bytes)", len(base64_data))
 
     return base64.b64decode(base64_data)
 

@@ -2,6 +2,8 @@
 
 A simple image viewer with Gemini AI image editing integration.
 
+![Application Screenshot](application.png)
+
 ## Features
 
 - **Image viewing** with cursor-focused zoom
@@ -22,6 +24,8 @@ python main.py <image_path> [--debug]
 - **Escape**: Close viewer
 
 ### Gemini Image Editing
+
+![AI Generation Feature](ai-generated.png)
 
 1. Enter your Gemini API key in the "API KEY" field (or set `GOSS_GEMINI_API_KEY` environment variable)
 2. Enter your prompt in the "PROMPT" field
@@ -55,6 +59,12 @@ pip install -r requirements.txt
 ```
 
 ## Debug Mode
+
+![Debug Panel](debug.png)
+
+The debug panel shows cursor position, pixel color (hex), zoom level, and image metadata.
+
+![Image Metadata Panel](image-metadata.png)
 
 Enable verbose logging:
 

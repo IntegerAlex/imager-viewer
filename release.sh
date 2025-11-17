@@ -88,51 +88,31 @@ chmod +x "$RELEASE_BINARY"
 
 echo "Release binary prepared: ${RELEASE_BINARY}"
 
-# Check if tag already exists
+# Check if tag already exists locally
 if git rev-parse "$TAG" >/dev/null 2>&1; then
     echo ""
-    echo "Warning: Tag ${TAG} already exists"
-    read -p "Delete existing tag and release? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Delete local tag
-        git tag -d "$TAG" 2>/dev/null || true
-        # Delete remote tag
-        gh release delete "$TAG" --yes 2>/dev/null || true
-        git push origin ":refs/tags/${TAG}" 2>/dev/null || true
-    else
-        echo "Aborted"
-        exit 1
-    fi
+    echo "Tag ${TAG} already exists locally"
+else
+    # Create git tag
+    echo ""
+    echo "Creating git tag: ${TAG}"
+    git tag -a "$TAG" -m "Release ${VERSION}"
+
+    # Push tag
+    echo "Pushing tag to remote..."
+    git push origin "$TAG"
 fi
 
-# Check if latest tag exists
-if git rev-parse "$LATEST_TAG" >/dev/null 2>&1; then
-    echo "Deleting existing 'latest' tag..."
-    git tag -d "$LATEST_TAG" 2>/dev/null || true
-    gh release delete "$LATEST_TAG" --yes 2>/dev/null || true
-    git push origin ":refs/tags/${LATEST_TAG}" 2>/dev/null || true
-fi
+# Check if release exists on GitHub
+if gh release view "$TAG" >/dev/null 2>&1; then
+    echo ""
+    echo "Release ${TAG} already exists, uploading asset..."
+    gh release upload "$TAG" "$RELEASE_BINARY"
+else
+    echo ""
+    echo "Creating GitHub release: ${TAG}"
 
-# Create git tag
-echo ""
-echo "Creating git tag: ${TAG}"
-git tag -a "$TAG" -m "Release ${VERSION}"
-
-# Create latest tag pointing to same commit
-echo "Creating git tag: ${LATEST_TAG}"
-git tag -a "$LATEST_TAG" -m "Latest release"
-
-# Push tags
-echo ""
-echo "Pushing tags to remote..."
-git push origin "$TAG"
-git push origin "$LATEST_TAG"
-
-# Create GitHub release
-echo ""
-echo "Creating GitHub release: ${TAG}"
-RELEASE_NOTES="## advance-image-viewer ${VERSION}
+    RELEASE_NOTES="## advance-image-viewer ${VERSION}
 
 An opiniated imageviewer (its a viewer not editor) with AI.
 
@@ -152,18 +132,33 @@ Invoke-WebRequest -Uri \"https://raw.githubusercontent.com/${REPO}/master/instal
 ### Changes
 See [CHANGELOG.md](CHANGELOG.md) for details."
 
-gh release create "$TAG" \
-    --title "advance-image-viewer ${VERSION}" \
-    --notes "$RELEASE_NOTES" \
-    "$RELEASE_BINARY"
+    gh release create "$TAG" \
+        --title "advance-image-viewer ${VERSION}" \
+        --notes "$RELEASE_NOTES" \
+        "$RELEASE_BINARY"
+fi
 
-# Create latest release
+# Handle latest tag separately
 echo ""
-echo "Creating GitHub release: ${LATEST_TAG}"
-gh release create "$LATEST_TAG" \
-    --title "advance-image-viewer Latest" \
-    --notes "$RELEASE_NOTES" \
-    "$RELEASE_BINARY"
+if git rev-parse "$LATEST_TAG" >/dev/null 2>&1; then
+    echo "Updating 'latest' tag..."
+    git tag -d "$LATEST_TAG" 2>/dev/null || true
+fi
+
+git tag -f "$LATEST_TAG" -m "Latest release"
+git push -f origin "$LATEST_TAG"
+
+# Update or create latest release
+if gh release view "$LATEST_TAG" >/dev/null 2>&1; then
+    echo "Updating latest release with new asset..."
+    gh release upload "$LATEST_TAG" "$RELEASE_BINARY"
+else
+    echo "Creating GitHub release: ${LATEST_TAG}"
+    gh release create "$LATEST_TAG" \
+        --title "advance-image-viewer Latest" \
+        --notes "$RELEASE_NOTES" \
+        "$RELEASE_BINARY"
+fi
 
 echo ""
 echo "========================================="

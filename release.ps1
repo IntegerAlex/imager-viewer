@@ -103,64 +103,33 @@ Copy-Item $BINARY_PATH $RELEASE_BINARY -Force
 
 Write-Host "Release binary prepared: $RELEASE_BINARY" -ForegroundColor Green
 
-# Check if tag already exists
+# Check if tag already exists locally
 try {
     $null = git rev-parse "$TAG" 2>$null
     Write-Host ""
-    Write-Host "Warning: Tag $TAG already exists" -ForegroundColor Yellow
-    $response = Read-Host "Delete existing tag and release? (y/N)"
-    if ($response -eq "y" -or $response -eq "Y") {
-        # Delete local tag
-        git tag -d "$TAG" 2>$null
-        # Delete remote tag and release
-        try {
-            gh release delete "$TAG" --yes 2>$null
-        } catch {}
-        try {
-            git push origin ":refs/tags/${TAG}" 2>$null
-        } catch {}
-    } else {
-        Write-Host "Aborted" -ForegroundColor Yellow
-        exit 1
-    }
+    Write-Host "Tag $TAG already exists locally" -ForegroundColor Green
 } catch {
-    # Tag doesn't exist, continue
+    # Create git tag
+    Write-Host ""
+    Write-Host "Creating git tag: $TAG" -ForegroundColor Yellow
+    git tag -a "$TAG" -m "Release $VERSION"
+
+    # Push tag
+    Write-Host "Pushing tag to remote..." -ForegroundColor Yellow
+    git push origin "$TAG"
 }
 
-# Check if latest tag exists
+# Check if release exists on GitHub
 try {
-    $null = git rev-parse "$LATEST_TAG" 2>$null
-    Write-Host "Deleting existing 'latest' tag..." -ForegroundColor Yellow
-    git tag -d "$LATEST_TAG" 2>$null
-    try {
-        gh release delete "$LATEST_TAG" --yes 2>$null
-    } catch {}
-    try {
-        git push origin ":refs/tags/${LATEST_TAG}" 2>$null
-    } catch {}
+    gh release view "$TAG" | Out-Null
+    Write-Host ""
+    Write-Host "Release $TAG already exists, uploading asset..." -ForegroundColor Yellow
+    gh release upload "$TAG" "$RELEASE_BINARY"
 } catch {
-    # Tag doesn't exist, continue
-}
+    Write-Host ""
+    Write-Host "Creating GitHub release: $TAG" -ForegroundColor Yellow
 
-# Create git tag
-Write-Host ""
-Write-Host "Creating git tag: $TAG" -ForegroundColor Yellow
-git tag -a "$TAG" -m "Release $VERSION"
-
-# Create latest tag pointing to same commit
-Write-Host "Creating git tag: $LATEST_TAG" -ForegroundColor Yellow
-git tag -a "$LATEST_TAG" -m "Latest release"
-
-# Push tags
-Write-Host ""
-Write-Host "Pushing tags to remote..." -ForegroundColor Yellow
-git push origin "$TAG"
-git push origin "$LATEST_TAG"
-
-# Create GitHub release
-Write-Host ""
-Write-Host "Creating GitHub release: $TAG" -ForegroundColor Yellow
-$RELEASE_NOTES = @"
+    $RELEASE_NOTES = @"
 ## advance-image-viewer $VERSION
 
 An opiniated imageviewer (its a viewer not editor) with AI.
@@ -182,18 +151,37 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/$REPO/master/installer
 See [CHANGELOG.md](CHANGELOG.md) for details.
 "@
 
-gh release create "$TAG" `
-    --title "advance-image-viewer $VERSION" `
-    --notes $RELEASE_NOTES `
-    "$RELEASE_BINARY"
+    gh release create "$TAG" `
+        --title "advance-image-viewer $VERSION" `
+        --notes $RELEASE_NOTES `
+        "$RELEASE_BINARY"
+}
 
-# Create latest release
+# Handle latest tag separately
 Write-Host ""
-Write-Host "Creating GitHub release: $LATEST_TAG" -ForegroundColor Yellow
-gh release create "$LATEST_TAG" `
-    --title "advance-image-viewer Latest" `
-    --notes $RELEASE_NOTES `
-    "$RELEASE_BINARY"
+try {
+    $null = git rev-parse "$LATEST_TAG" 2>$null
+    Write-Host "Updating 'latest' tag..." -ForegroundColor Yellow
+    git tag -d "$LATEST_TAG" 2>$null
+} catch {
+    # Tag doesn't exist
+}
+
+git tag -f "$LATEST_TAG" -m "Latest release"
+git push -f origin "$LATEST_TAG"
+
+# Update or create latest release
+try {
+    gh release view "$LATEST_TAG" | Out-Null
+    Write-Host "Updating latest release with new asset..." -ForegroundColor Yellow
+    gh release upload "$LATEST_TAG" "$RELEASE_BINARY"
+} catch {
+    Write-Host "Creating GitHub release: $LATEST_TAG" -ForegroundColor Yellow
+    gh release create "$LATEST_TAG" `
+        --title "advance-image-viewer Latest" `
+        --notes $RELEASE_NOTES `
+        "$RELEASE_BINARY"
+}
 
 Write-Host ""
 Write-Host "=========================================" -ForegroundColor Green

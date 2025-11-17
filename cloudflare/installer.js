@@ -150,7 +150,7 @@ try {
 Write-Host "Latest release: $LATEST_TAG"
 
 # Construct download URL
-$ASSET_NAME = "imageviewer-windows-$ARCH.exe"
+$ASSET_NAME = "imageviewer.exe-windows-$ARCH.exe"
 $DOWNLOAD_URL = "https://github.com/` + REPO + `/releases/download/$LATEST_TAG/$ASSET_NAME"
 
 Write-Host "Downloading from: $DOWNLOAD_URL"

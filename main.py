@@ -359,7 +359,26 @@ def parse_cli_args():
         action="store_true",
         help="Enable verbose debug logging.",
     )
-    return parser.parse_args()
+    try:
+        return parser.parse_args()
+    except SystemExit as e:
+        # In windowed mode, show error in message box instead of console
+        if sys.stdout is None or sys.stderr is None:
+            try:
+                import tkinter.messagebox as messagebox
+                root = tk.Tk()
+                root.withdraw()  # Hide main window
+                if e.code != 0:  # Error occurred
+                    messagebox.showerror(
+                        "Command Line Error",
+                        "Invalid command line arguments.\n\n"
+                        "Usage: imageviewer <image_path> [--debug]\n\n"
+                        "Example: imageviewer photo.jpg"
+                    )
+                root.destroy()
+            except Exception:
+                pass
+        raise
 
 
 def configure_logging(debug_enabled: bool):
@@ -386,4 +405,27 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Fix for PyInstaller windowed mode: ensure stdout/stderr are not None
+    # When console=False, PyInstaller sets these to None, causing argparse to fail
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, 'w')
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, 'w')
+    
+    try:
+        main()
+    except SystemExit:
+        # Re-raise SystemExit to allow proper exit codes
+        raise
+    except Exception as e:
+        # For windowed mode, show error in a message box if possible
+        if sys.stderr is None or sys.stdout is None:
+            try:
+                import tkinter.messagebox as messagebox
+                root = tk.Tk()
+                root.withdraw()  # Hide main window
+                messagebox.showerror("Error", f"An error occurred:\n{str(e)}")
+                root.destroy()
+            except Exception:
+                pass
+        raise

@@ -58,6 +58,32 @@ The API key field accepts:
 pip install -r requirements.txt
 ```
 
+## Building Standalone Executable
+
+Build a standalone executable using PyInstaller:
+
+```bash
+# Using the build script (recommended)
+python build.py
+
+# Or directly with PyInstaller
+pyinstaller imageviewer.spec
+```
+
+The executable will be created in the `dist/` directory:
+
+- **Linux/macOS**: `dist/imageviewer`
+- **Windows**: `dist/imageviewer.exe`
+
+### Build Options
+
+```bash
+# Clean build directories before building
+python build.py --clean
+```
+
+The build includes all dependencies and creates a single-file executable that can run without Python installed.
+
 ## Debug Mode
 
 ![Debug Panel](debug.png)

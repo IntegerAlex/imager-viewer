@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.5-flash-image-preview:generateContent"
+    "gemini-2.5-flash-image:generateContent"
 )
 
 

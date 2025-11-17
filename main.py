@@ -1,0 +1,260 @@
+import io
+import os
+import sys
+import tempfile
+import threading
+import tkinter as tk
+
+from PIL import Image, ImageTk
+
+from src.calculate_max_zoom import calculate_max_zoom as calc_max_zoom
+from src.display_image import display_image as display_image_fn
+from src.handle_zoom import handle_zoom as handle_zoom_fn
+from src.zoom_in import zoom_in as zoom_in_fn
+from src.zoom_out import zoom_out as zoom_out_fn
+from src.image_metadata import build_metadata_text
+from src.on_resize import on_resize as on_resize_fn
+from src.services.gemini_image_service import (
+    GeminiServiceError,
+    generate_image_edit,
+)
+from src.update_cursor_info import update_cursor_info as update_cursor_info_fn
+
+class SimpleImageViewer:
+    def __init__(self, root, image_path):
+        self.root = root
+        self.root.title("Image Viewer")
+        self.root.geometry("1000x600")
+        
+        # Load image
+        try:
+            self.original_image = Image.open(image_path)
+            self.original_size = self.original_image.size
+        except Exception as e:
+            print(f"Error loading image: {e}")
+            sys.exit(1)
+        self.image_path = os.path.abspath(image_path)
+        
+        # Define zoom constraints FIRST before using them
+        self.min_zoom = 1.0
+        self.max_zoom = self.calculate_max_zoom()
+        self.zoom_level = self.min_zoom  # Start at minimum zoom (1.0x)
+        
+        # Main frame to hold canvas and debug panel
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Canvas setup
+        self.canvas = tk.Canvas(main_frame, bg='gray20', highlightthickness=0)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Debug panel frame
+        debug_frame = tk.Frame(main_frame, width=200, bg='gray15', padx=10, pady=10)
+        debug_frame.pack(side=tk.RIGHT, fill=tk.Y)
+        debug_frame.pack_propagate(False)
+        
+        # Top control inputs (placeholders for future functionality)
+        controls_frame = tk.Frame(debug_frame, bg='gray15')
+        controls_frame.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Label(controls_frame, text="API KEY", bg='gray15', fg='white', font=('Arial', 9)).pack(anchor=tk.W)
+        self.api_key_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT, show="•")
+        self.api_key_entry.pack(fill=tk.X, pady=(2, 6))
+        env_key = os.environ.get("GEMINI_API_KEY")
+        if env_key:
+            self.api_key_entry.insert(0, env_key)
+
+        tk.Label(controls_frame, text="PROMPT", bg='gray15', fg='white', font=('Arial', 9)).pack(anchor=tk.W)
+        self.prompt_entry = tk.Entry(controls_frame, bg='gray5', fg='white', insertbackground='white', relief=tk.FLAT)
+        self.prompt_entry.pack(fill=tk.X, pady=(2, 6))
+
+        self.action_button = tk.Button(
+            controls_frame,
+            text="Generate",
+            relief=tk.FLAT,
+            bg='gray30',
+            fg='white',
+            command=self.handle_generate_click,
+        )
+        self.action_button.pack(fill=tk.X, pady=(4, 4))
+
+        self.status_var = tk.StringVar(value="Awaiting prompt…")
+        self.status_label = tk.Label(
+            controls_frame,
+            textvariable=self.status_var,
+            bg='gray15',
+            fg='lightgray',
+            font=('Arial', 8)
+        )
+        self.status_label.pack(anchor=tk.W)
+
+        # Debug labels
+        tk.Label(debug_frame, text="DEBUG INFO", bg='gray15', fg='white', font=('Arial', 10, 'bold')).pack(pady=(0, 10))
+        
+        self.cursor_label = tk.Label(debug_frame, text="Cursor: (0, 0)", bg='gray15', fg='white', font=('Arial', 9))
+        self.cursor_label.pack(anchor=tk.W, pady=2)
+        
+        self.hex_label = tk.Label(debug_frame, text="Hex: #000000", bg='gray15', fg='white', font=('Arial', 9))
+        self.hex_label.pack(anchor=tk.W, pady=2)
+        
+        # Now self.min_zoom is defined, so this works
+        self.zoom_label = tk.Label(debug_frame, text=f"Zoom: {self.zoom_level:.1f}x", bg='gray15', fg='white', font=('Arial', 9))
+        self.zoom_label.pack(anchor=tk.W, pady=2)
+        
+        # Image metadata (bottom of panel)
+        metadata_frame = tk.Frame(debug_frame, bg='gray13', padx=5, pady=5)
+        metadata_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
+
+        tk.Label(metadata_frame, text="IMAGE METADATA", bg='gray13', fg='white', font=('Arial', 9, 'bold')).pack(anchor=tk.W, pady=(0, 4))
+        self.metadata_text = tk.Text(
+            metadata_frame,
+            bg='gray10',
+            fg='white',
+            font=('Arial', 8),
+            wrap=tk.WORD,
+            height=14,
+            relief=tk.FLAT,
+            padx=4,
+            pady=4,
+        )
+        self.metadata_text.pack(fill=tk.BOTH, expand=True)
+        self.metadata_text.config(state=tk.DISABLED)
+
+        # Current cursor position and image position
+        self.cursor_pos = (0, 0)
+        self.image_pos = (0, 0)
+        self.image_size = (0, 0)
+
+        # Metadata text
+        self.update_metadata_panel()
+        
+        # Display image (this will set initial image_size)
+        self.display_image()
+        
+        # Bind events
+        self.canvas.bind("<MouseWheel>", self.handle_zoom)
+        self.root.bind("<Control-plus>", self.zoom_in)
+        self.root.bind("<Control-minus>", self.zoom_out)
+        self.root.bind("<Control-equal>", self.zoom_in)
+        self.canvas.bind("<Motion>", self.update_cursor_info)
+        self.root.bind("<Configure>", self.on_resize)
+        self.root.bind("<Escape>", lambda e: root.destroy())
+
+    def handle_generate_click(self):
+        api_key = self.api_key_entry.get().strip()
+        prompt = self.prompt_entry.get().strip()
+
+        if not api_key or not prompt:
+            self._set_status("API key and prompt are required.", error=True)
+            return
+
+        self.action_button.config(state=tk.DISABLED, text="Generating…")
+        self._set_status("Contacting Gemini…")
+        worker = threading.Thread(
+            target=self._run_generation,
+            args=(api_key, prompt),
+            daemon=True,
+        )
+        worker.start()
+
+    def _run_generation(self, api_key, prompt):
+        try:
+            image_bytes = generate_image_edit(api_key, prompt, self.image_path)
+        except (ValueError, GeminiServiceError, OSError) as exc:
+            self.root.after(0, lambda: self._generation_failed(str(exc)))
+            return
+        except Exception as exc:  # pylint: disable=broad-except
+            self.root.after(0, lambda: self._generation_failed(f"Unexpected error: {exc}"))
+            return
+
+        self.root.after(0, lambda: self._generation_succeeded(image_bytes))
+
+    def _generation_failed(self, message):
+        self.action_button.config(state=tk.NORMAL, text="Generate")
+        self._set_status(message, error=True)
+
+    def _generation_succeeded(self, image_bytes):
+        try:
+            new_image = Image.open(io.BytesIO(image_bytes))
+            new_image.load()
+        except Exception as exc:  # pylint: disable=broad-except
+            self._generation_failed(f"Failed to load generated image: {exc}")
+            return
+
+        new_path = self._persist_generated_image(image_bytes)
+        self.original_image = new_image
+        self.original_size = new_image.size
+        self.image_path = new_path
+        self.max_zoom = self.calculate_max_zoom()
+        self.zoom_level = self.min_zoom
+        self.display_image()
+        self.update_metadata_panel()
+
+        self.action_button.config(state=tk.NORMAL, text="Generate")
+        self._set_status("Image updated.", error=False)
+
+    def _persist_generated_image(self, image_bytes):
+        tmp_file = tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".png",
+            prefix="imageviewer_gemini_",
+        )
+        with tmp_file:
+            tmp_file.write(image_bytes)
+        return tmp_file.name
+
+    def _set_status(self, message, error=False):
+        color = 'tomato' if error else 'lightgray'
+        self.status_var.set(message)
+        if hasattr(self, "status_label"):
+            self.status_label.config(fg=color)
+    
+    def calculate_max_zoom(self):
+        """Calculate max zoom to not exceed 4K resolution"""
+        return calc_max_zoom(self.original_size)
+    
+    def display_image(self, zoom_center=None):
+        """Display image at current zoom level with optional zoom center"""
+        return display_image_fn(self, zoom_center=zoom_center)
+    
+    def handle_zoom(self, event):
+        """Handle mouse wheel zoom with cursor focus"""
+        return handle_zoom_fn(self, event)
+    
+    def zoom_in(self, event=None):
+        """Zoom in with keyboard shortcut (centered on current cursor)"""
+        return zoom_in_fn(self, event)
+    
+    def zoom_out(self, event=None):
+        """Zoom out with keyboard shortcut (centered on current cursor)"""
+        return zoom_out_fn(self, event)
+    
+    def update_cursor_info(self, event):
+        """Update cursor position and color hex in debug panel"""
+        return update_cursor_info_fn(self, event)
+    
+    def on_resize(self, event):
+        """Handle window resize"""
+        return on_resize_fn(self, event)
+
+    def update_metadata_panel(self):
+        """Populate the metadata text widget with extended image details."""
+        metadata = build_metadata_text(self.image_path, self.original_image)
+        self.metadata_text.config(state=tk.NORMAL)
+        self.metadata_text.delete("1.0", tk.END)
+        self.metadata_text.insert(tk.END, metadata)
+        self.metadata_text.config(state=tk.DISABLED)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python imageviewer.py <image_path>")
+        sys.exit(1)
+    
+    image_path = sys.argv[1]
+    if not os.path.exists(image_path):
+        print(f"Image not found: {image_path}")
+        sys.exit(1)
+    
+    root = tk.Tk()
+    app = SimpleImageViewer(root, image_path)
+    root.mainloop()

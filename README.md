@@ -25,13 +25,13 @@ Built with Python 3.10+ utilizing the Tkinter GUI framework for cross-platform c
 ### Command Line Interface
 
 ```bash
-python main.py <image_path> [--debug]
+python main.py [<image_path>] [--debug]
 ```
 
 **Parameters:**
 
-- `<image_path>`: Path to target image file (supports all PIL-compatible formats)
-- `--debug`: Enables verbose logging and diagnostic interface
+- `<image_path>`: (Optional) Path to target image file (supports all PIL-compatible formats). If not provided, the application starts with an empty interface.
+- `--debug`: Enables verbose debug logging
 
 ### Human-Computer Interaction Protocol
 
@@ -40,6 +40,7 @@ python main.py <image_path> [--debug]
 - **Orbital Navigation**: Mouse wheel implements logarithmic zoom scaling centered on cursor coordinates using advanced transformation matrices
 - **Translational Manipulation**: Left mouse button enables viewport translation with momentum-based physics simulation
 - **Keyboard Accelerators**: Ctrl + / - provides discrete zoom levels with hysteresis compensation
+- **Menu Navigation**: File menu provides Open, Save As, and Exit options with keyboard shortcuts (Ctrl+O, Ctrl+S, Ctrl+Q)
 - **Termination Sequence**: Escape key triggers graceful application shutdown with resource cleanup
 
 #### AI-Enhanced Image Transformation Pipeline

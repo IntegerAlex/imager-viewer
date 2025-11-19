@@ -31,28 +31,32 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleImageViewer:
-    def __init__(self, root, image_path, debug_enabled=False, logger_instance=None):
+    def __init__(self, root, image_path=None, debug_enabled=False, logger_instance=None):
         self.root = root
         self.root.title("advance-image-viewer")
         self.root.geometry("1000x600")
         self.logger = logger_instance or logging.getLogger(self.__class__.__name__)
         self.debug_enabled = debug_enabled
-        self._log_debug("SimpleImageViewer initializing for %s", image_path)
-        
-        # Load image
-        try:
-            self.original_image = Image.open(image_path)
-            self.original_size = self.original_image.size
-            self._log_debug("Loaded image %s (%s)", image_path, self.original_size)
-        except Exception as e:
-            print(f"Error loading image: {e}")
-            sys.exit(1)
-        self.image_path = os.path.abspath(image_path)
-        
-        # Define zoom constraints FIRST before using them
+
+        # Create menu bar
+        self.create_menu_bar()
+
+        # Initialize image-related attributes
+        self.original_image = None
+        self.original_size = None
+        self.image_path = None
+
+        # Define zoom constraints - will be updated when image is loaded
         self.min_zoom = 1.0
-        self.max_zoom = self.calculate_max_zoom()
+        self.max_zoom = 1.0  # Default, will be updated when image loads
         self.zoom_level = self.min_zoom  # Start at minimum zoom (1.0x)
+
+        # Load image if path provided
+        if image_path:
+            self._log_debug("SimpleImageViewer initializing for %s", image_path)
+            self.load_image(image_path)
+        else:
+            self._log_debug("SimpleImageViewer initializing without image - will show selection dialog")
         self._log_debug("Zoom constraints -> min: %.2f, max: %.2f", self.min_zoom, self.max_zoom)
         
         # Main frame to hold canvas and debug panel
@@ -169,11 +173,13 @@ class SimpleImageViewer:
         self.cursor_h_line = None  # Horizontal line ID
         self.cursor_v_line = None  # Vertical line ID
 
-        # Metadata text
-        self.update_metadata_panel()
-        
-        # Display image (this will set initial image_size)
-        self.display_image()
+        # Initialize UI components that depend on having an image
+        if self.original_image:
+            # Metadata text
+            self.update_metadata_panel()
+
+            # Display image (this will set initial image_size)
+            self.display_image()
         
         # Bind events
         self.canvas.bind("<MouseWheel>", self.handle_zoom)
@@ -207,6 +213,90 @@ class SimpleImageViewer:
         )
         worker.start()
 
+    def show_image_selection_dialog(self):
+        """Show dialog to select an image file from system."""
+        file_path = filedialog.askopenfilename(
+            title="Select Image File",
+            filetypes=[
+                ("Image files", "*.png *.jpg *.jpeg *.gif *.bmp *.tiff *.tif"),
+                ("PNG files", "*.png"),
+                ("JPEG files", "*.jpg"),
+                ("JPEG files", "*.jpeg"),
+                ("GIF files", "*.gif"),
+                ("BMP files", "*.bmp"),
+                ("TIFF files", "*.tiff"),
+                ("TIFF files", "*.tif"),
+                ("All files", "*.*"),
+            ],
+        )
+        return file_path
+
+    def create_menu_bar(self):
+        """Create the menu bar with File menu."""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open...", command=self.handle_open_file, accelerator="Ctrl+O")
+        file_menu.add_separator()
+        file_menu.add_command(label="Save As...", command=self.handle_save_click, accelerator="Ctrl+S")
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit, accelerator="Ctrl+Q")
+
+        # Bind keyboard shortcuts
+        self.root.bind("<Control-o>", lambda e: self.handle_open_file())
+        self.root.bind("<Control-O>", lambda e: self.handle_open_file())
+        self.root.bind("<Control-s>", lambda e: self.handle_save_click())
+        self.root.bind("<Control-S>", lambda e: self.handle_save_click())
+        self.root.bind("<Control-q>", lambda e: self.root.quit())
+        self.root.bind("<Control-Q>", lambda e: self.root.quit())
+
+    def handle_open_file(self):
+        """Handle File -> Open menu action."""
+        try:
+            file_path = self.show_image_selection_dialog()
+            if file_path:
+                try:
+                    self.load_image(file_path)
+                    self._set_status(f"Opened: {os.path.basename(file_path)}", error=False)
+                except Exception as e:
+                    error_msg = f"Failed to open image: {e}"
+                    self._set_status(error_msg, error=True)
+                    self._log_debug("Open failed: %s", e)
+            else:
+                self._log_debug("Open cancelled by user")
+        except Exception as exc:
+            error_msg = f"Failed to open file dialog: {exc}"
+            self._set_status(error_msg, error=True)
+            self._log_debug("Open dialog failed: %s", exc)
+
+    def load_image(self, image_path):
+        """Load an image and initialize viewer state."""
+        try:
+            self.original_image = Image.open(image_path)
+            self.original_size = self.original_image.size
+            self.image_path = os.path.abspath(image_path)
+            self._log_debug("Loaded image %s (%s)", image_path, self.original_size)
+
+            # Update zoom constraints now that we have an image
+            self.max_zoom = self.calculate_max_zoom()
+            self.zoom_level = self.min_zoom
+
+            # Update UI components that depend on having an image
+            self.update_metadata_panel()
+            self.display_image()
+
+        except Exception as e:
+            error_msg = f"Error loading image: {e}"
+            print(error_msg)
+            self._log_debug("Failed to load image: %s", e)
+            # Show error in status if UI is initialized
+            if hasattr(self, 'status_var'):
+                self._set_status(error_msg, error=True)
+            raise
+
     def handle_save_click(self):
         """Handle save button click - open file dialog and save image."""
         try:
@@ -215,7 +305,7 @@ class SimpleImageViewer:
             default_name, default_ext = os.path.splitext(default_filename)
             if not default_ext:
                 default_ext = ".png"
-            
+
             # Open file save dialog
             file_path = filedialog.asksaveasfilename(
                 title="Save Image As",
@@ -228,7 +318,7 @@ class SimpleImageViewer:
                 ],
                 initialfile=default_filename,
             )
-            
+
             if file_path:
                 # Save the original image (not the zoomed/resized version)
                 self.original_image.save(file_path)
@@ -361,7 +451,7 @@ class SimpleImageViewer:
 
 def parse_cli_args():
     parser = argparse.ArgumentParser(description="An opiniated imageviewer (its a viewer not editor) with AI.")
-    parser.add_argument("image_path", help="Path to the image file to open.")
+    parser.add_argument("image_path", nargs="?", help="Path to the image file to open. If not provided, a file selection dialog will open.")
     parser.add_argument(
         "--debug",
         action="store_true",
@@ -422,16 +512,17 @@ def main():
     configure_logging(args.debug)
     logger.info("Launching SimpleImageViewer (debug=%s)", args.debug)
 
-    if not os.path.exists(args.image_path):
+    # Check if image path was provided and exists
+    if args.image_path and not os.path.exists(args.image_path):
         logger.error("Image not found: %s", args.image_path)
         print(f"Image not found: {args.image_path}")
         sys.exit(1)
 
     # Setup Windows DPI awareness before creating Tk root
     setup_windows_dpi()
-    
+
     root = tk.Tk()
-    
+
     # Windows-specific optimizations
     if sys.platform == 'win32':
         # Improve canvas rendering quality
@@ -440,8 +531,9 @@ def main():
             root.tk.call('tk', 'scaling', root.tk.call('winfo', 'fpixels', root, '1i') / 96.0)
         except Exception:
             pass
-    
+
     app = SimpleImageViewer(root, args.image_path, debug_enabled=args.debug, logger_instance=logger)
+
     root.mainloop()
 
 

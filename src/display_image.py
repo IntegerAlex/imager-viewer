@@ -21,6 +21,10 @@ def display_image(viewer, zoom_center=None):
     zoom_center: tuple[int, int] | None
         Canvas coordinates to keep fixed during zoom.
     """
+    if viewer.original_image is None:
+        logger.debug("No image loaded, skipping display")
+        return
+
     logger.debug("Displaying image at zoom %.2fx (center=%s)", viewer.zoom_level, zoom_center)
     # Apply constraints
     viewer.zoom_level = max(viewer.min_zoom, min(viewer.zoom_level, viewer.max_zoom))

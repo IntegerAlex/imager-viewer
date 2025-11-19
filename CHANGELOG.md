@@ -30,6 +30,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error handling in installation scripts
 - Optimized documentation structure for better user/developer separation
 
+## [0.2.0] - 2025-11-19
+
+### Added
+- **Menu Bar Interface**: Complete File menu with Open, Save As, and Exit options
+- **Keyboard Shortcuts**: Full keyboard navigation support (Ctrl+O, Ctrl+S, Ctrl+Q)
+- **Enhanced File Opening**: Menu-based file selection with improved user experience
+- **Optional Command Line**: Image path argument now optional, application starts with empty interface
+
+### Changed
+- **Startup Behavior**: Removed automatic file dialog when no image path provided
+- **UI Theme**: Reverted to classic dark theme (gray colors) for better compatibility
+- **Save Functionality**: Moved save button to menu bar for cleaner interface
+- **Documentation**: Updated README to reflect new CLI behavior and menu features
+
+### Technical Improvements
+- Added `handle_open_file()` method for menu-based file operations
+- Enhanced `display_image()` to handle empty state gracefully
+- Improved error handling for file operations
+- Better separation of UI initialization and image loading logic
+
 ## [0.1.0] - 2025-11-17
 
 ### Added

@@ -72,7 +72,7 @@ rm -rf build dist
 # Build the binary
 echo ""
 echo "Building binary..."
-python3 build.py --clean
+python3 scripts/build.py --clean
 
 # Check if binary was created
 BINARY_PATH="dist/${BINARY_NAME}"

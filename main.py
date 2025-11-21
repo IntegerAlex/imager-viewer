@@ -51,18 +51,10 @@ class SimpleImageViewer:
         self.max_zoom = 1.0  # Default, will be updated when image loads
         self.zoom_level = self.min_zoom  # Start at minimum zoom (1.0x)
 
-        # Load image if path provided
-        if image_path:
-            self._log_debug("SimpleImageViewer initializing for %s", image_path)
-            self.load_image(image_path)
-        else:
-            self._log_debug("SimpleImageViewer initializing without image - will show selection dialog")
-        self._log_debug("Zoom constraints -> min: %.2f, max: %.2f", self.min_zoom, self.max_zoom)
-        
         # Main frame to hold canvas and debug panel
         main_frame = tk.Frame(root)
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Canvas setup with Windows quality improvements
         canvas_config = {
             'bg': 'gray20',
@@ -76,12 +68,12 @@ class SimpleImageViewer:
             })
         self.canvas = tk.Canvas(main_frame, **canvas_config)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
+
         # Debug panel frame
         debug_frame = tk.Frame(main_frame, width=200, bg='gray15', padx=10, pady=10)
         debug_frame.pack(side=tk.RIGHT, fill=tk.Y)
         debug_frame.pack_propagate(False)
-        
+
         # Top control inputs (placeholders for future functionality)
         controls_frame = tk.Frame(debug_frame, bg='gray15')
         controls_frame.pack(fill=tk.X, pady=(0, 10))
@@ -130,17 +122,17 @@ class SimpleImageViewer:
 
         # Debug labels
         tk.Label(debug_frame, text="DEBUG INFO", bg='gray15', fg='white').pack(pady=(0, 10))
-        
+
         self.cursor_label = tk.Label(debug_frame, text="Cursor: (0, 0)", bg='gray15', fg='white')
         self.cursor_label.pack(anchor=tk.W, pady=2)
-        
+
         self.hex_label = tk.Label(debug_frame, text="Hex: #000000", bg='gray15', fg='white')
         self.hex_label.pack(anchor=tk.W, pady=2)
-        
+
         # Now self.min_zoom is defined, so this works
         self.zoom_label = tk.Label(debug_frame, text=f"Zoom: {self.zoom_level:.1f}x", bg='gray15', fg='white')
         self.zoom_label.pack(anchor=tk.W, pady=2)
-        
+
         # Image metadata (bottom of panel)
         metadata_frame = tk.Frame(debug_frame, bg='gray13', padx=5, pady=5)
         metadata_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
@@ -159,27 +151,27 @@ class SimpleImageViewer:
         self.metadata_text.pack(fill=tk.BOTH, expand=True)
         self.metadata_text.config(state=tk.DISABLED)
 
+        # Load image if path provided
+        if image_path:
+            self._log_debug("SimpleImageViewer initializing for %s", image_path)
+            self.load_image(image_path)
+        else:
+            self._log_debug("SimpleImageViewer initializing without image - will show selection dialog")
+        self._log_debug("Zoom constraints -> min: %.2f, max: %.2f", self.min_zoom, self.max_zoom)
+
         # Current cursor position and image position
         self.cursor_pos = (0, 0)
         self.image_pos = (0, 0)
         self.image_size = (0, 0)
-        
+
         # Panning state
         self.is_panning = False
         self.pan_start_pos = None
         self.pan_start_image_pos = None
-        
+
         # Cursor crosshair lines
         self.cursor_h_line = None  # Horizontal line ID
         self.cursor_v_line = None  # Vertical line ID
-
-        # Initialize UI components that depend on having an image
-        if self.original_image:
-            # Metadata text
-            self.update_metadata_panel()
-
-            # Display image (this will set initial image_size)
-            self.display_image()
         
         # Bind events
         self.canvas.bind("<MouseWheel>", self.handle_zoom)

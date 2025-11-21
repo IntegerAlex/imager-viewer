@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-11-21
+
 ### Added
 - Comprehensive documentation restructuring
   - Created dedicated `FEATURES.md` with detailed technical specifications
@@ -21,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Installer Scripts**: Corrected sed command escaping for proper tag extraction
 
 ### Fixed
+- **Critical Bug**: AttributeError when launching with image path - 'SimpleImageViewer' object has no attribute 'metadata_text'
+  - Fixed UI initialization order to prevent accessing uninitialized widgets
+  - Reordered component creation to ensure metadata_text exists before image loading
 - Windows installer asset naming inconsistency (`imageviewer.exe-windows-x86_64.exe`)
 - Release script behavior to preserve existing releases
 - Template literal variable interpolation issues in Cloudflare Worker

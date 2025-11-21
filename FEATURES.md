@@ -4,6 +4,15 @@ A comprehensive overview of Advance Image Viewer's capabilities and technical im
 
 ## Core Features
 
+### Intelligent File Acquisition
+
+![File selection dialog showing native system integration](screenshots/file-selector.png)
+
+- **Native Dialog Integration**: Leverages the host OS file picker so users can browse their local filesystem securely before loading assets into the viewer
+- **Format-aware Filtering**: Automatically filters supported image formats while still allowing manual override for power users
+- **Stateful Directory Memory**: Remembers the last visited directory within the session for faster iterative workflows
+- **Input Validation Layer**: All chosen paths go through the same validation pipeline as drag-and-drop operations to ensure safe, canonicalized access
+
 ### Advanced Visualization Engine
 
 #### Cursor-centric Zoom Mechanics
